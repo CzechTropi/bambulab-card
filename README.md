@@ -8,6 +8,15 @@ A minimalist Home Assistant dashboard card for Bambu Lab 3D printers: live camer
 
 Works with all Bambu Lab printers supported by the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration.
 
+![Printing, paused with an error, finished and powered off](images/overview.png)
+
+<table>
+  <tr>
+    <td align="center"><img src="images/preview.png" width="300"><br><sub>Print preview – one tap on the image icon</sub></td>
+    <td align="center"><img src="images/preparing.png" width="300"><br><sub>Current stage while preparing the print</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 - Live camera with a one-tap switch to the print preview (cover image)
@@ -72,6 +81,8 @@ name: My printer                # optional – defaults to the device name
 Minimalistická karta do Home Assistantu pro 3D tiskárny Bambu Lab: živá kamera / náhled tisku, teplota trysky a podložky, průběh tisku s časem dokončení, HMS chyby, světlo a napájení přes chytrou zásuvku.
 
 Funguje se všemi tiskárnami Bambu Lab, které podporuje integrace [ha-bambulab](https://github.com/greghesp/ha-bambulab).
+
+<img src="images/czech.png" width="320" alt="Karta v češtině">
 
 ### Předpoklady
 
