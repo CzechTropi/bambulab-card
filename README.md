@@ -154,7 +154,7 @@ Karta si entity najde sama podle `translation_key` na vybraném zařízení, tak
 
 Klikni na tlačítko, stáhni kartu a obnov prohlížeč (Ctrl+F5). Nebo ručně:
 
-- **Home Assistant 2026.11+:** Nastavení → **Marketplace** → **Přidat z odkazu** → `https://github.com/CzechTropi/bambulab-card`
+- **Home Assistant 2026.11+:** Nastavení → **Marketplace** → **Add from link** (Přidat z odkazu) → `https://github.com/CzechTropi/bambulab-card`
 - **Starší verze (HACS):** HACS → ⋮ → **Vlastní repozitáře** → stejná adresa, typ **Dashboard**
 
 ### Použití
