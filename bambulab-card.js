@@ -656,7 +656,9 @@ const BBF_STYLE = `
   .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
           background: rgba(128,128,128,.12); border: 1px solid rgba(128,128,128,.28); color: var(--secondary-text-color); cursor: pointer; line-height: 1.5; }
   .chip svg { flex-shrink: 0; }
+  ha-card { container-type: inline-size; }
   .groups { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pair { display: flex; gap: 8px; min-width: 0; }
   .grp { min-width: 0; box-sizing: border-box; background: rgba(128,128,128,.07); border: 1px solid rgba(128,128,128,.18); border-radius: 12px; padding: 8px; }
   .ghead { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0 2px 8px; min-height: 22px; }
   .glabel { font-size: 12px; font-weight: 500; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -699,6 +701,18 @@ const BBF_STYLE = `
   .slot.active .spool { border-color: var(--bbf-active); box-shadow: 0 0 10px color-mix(in srgb, var(--bbf-active) 55%, transparent); }
   .slot.active .dot { box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 0 0 3px var(--bbf-active), 0 0 10px var(--bbf-active); }
   .slot.active .lbl { border-color: color-mix(in srgb, var(--bbf-active) 70%, transparent); }
+  /* phones / narrow columns */
+  @container (max-width: 440px) {
+    .groups, .pair, .slots { gap: 5px; }
+    .grp { padding: 6px; border-radius: 10px; }
+    .ghead { margin: 0 1px 6px; }
+    .ghead .chip { font-size: 10px; padding: 0 5px; gap: 2px; }
+    .lbl { padding: 4px 2px; min-height: 28px; }
+    .nm { font-size: 10px; }
+    .ty { font-size: 9px; }
+    .val { font-size: 10px; padding: 1px 4px; }
+    .spool { border-radius: 7px; }
+  }
 `;
 
 class BambuLabFilamentBase extends HTMLElement {
@@ -877,10 +891,20 @@ class BambuLabFilamentCard extends BambuLabFilamentBase {
     if (!groups.length) return `<div class="warn">${T.f_warn_printer}</div>`;
     // keep group headers the same height so the spools line up
     const anyHead = groups.some((g) => g.head);
-    const body = groups.map((g) => {
-      const head = g.head || (anyHead ? '<div class="ghead"></div>' : '');
-      return `<div class="grp" style="flex:${g.n} 1 ${g.n * 64 + 18}px">${head}${this._slotsHtml(g.slots, T)}</div>`;
-    }).join('');
+    const basis = (n) => `${n * 50 + 14}px`;
+    const grp = (g) => `<div class="grp" style="flex:${g.n} 1 ${basis(g.n)}">${g.head || (anyHead ? '<div class="ghead"></div>' : '')}${this._slotsHtml(g.slots, T)}</div>`;
+    // the external spool always stays in one row with its neighbouring AMS, so on a phone
+    // it doesn't end up alone in a full-width row
+    const items = [];
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      const next = groups[i + 1];
+      if (next && (g.ext || next.ext)) {
+        items.push(`<div class="pair" style="flex:${g.n + next.n} 1 ${basis(g.n + next.n)}">${grp(g)}${grp(next)}</div>`);
+        i++;
+      } else items.push(grp(g));
+    }
+    const body = items.join('');
     return this._header(c.title, '') + `<div class="groups">${body}</div>`;
   }
   static getStubConfig(hass) {
@@ -927,7 +951,7 @@ function bbfSchema(kind, T) {
   return [
     ...head,
     { name: 'title', selector: { text: {} } },
-    { name: 'display', type: 'expandable', flatten: true, icon: 'mdi:eye-outline', schema: display },
+    ...display,
     ...slots,
   ];
 }
