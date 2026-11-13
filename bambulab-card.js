@@ -1,5 +1,6 @@
 // bambulab-card – minimalist Bambu Lab printer card (camera / preview, chips, progress)
-// Config: printer (device id from the Bambu Lab integration), power_switch, camera (optional), name (optional)
+// + filament cards: bambulab-ams-card, bambulab-spool-card, bambulab-filament-card (AMS + external spool)
+// Printer card config: printer (device id from the Bambu Lab integration), power_switch, camera (optional), name (optional)
 
 const BBL_COLORS = {
   running: '#378ADD', prepare: '#BA7517', pause: '#E0A030', finish: '#639922', failed: '#E24B4A',
@@ -508,3 +509,473 @@ if (!window.customCards.find((c) => c.type === 'bambulab-card')) {
   const T = BBL_I18N[(navigator.language || 'en').split('-')[0]] || BBL_I18N.en;
   window.customCards.push({ type: 'bambulab-card', name: 'Bambu Lab', description: T.desc, preview: false });
 }
+
+// ============================================================================================
+// Filament cards: AMS (bambulab-ams-card), external spool (bambulab-spool-card)
+// and AMS + external spool together (bambulab-filament-card)
+// ============================================================================================
+
+Object.assign(BBL_I18N.cs, {
+  f_empty: 'Prázdné', f_external: 'Externí', f_humidity: 'Vlhkost', f_temp: 'Teplota', f_active: 'Aktivní',
+  f_warn_ams: 'Vyber v editoru karty AMS (zařízení z integrace Bambu Lab).',
+  f_warn_spool: 'Vyber v editoru karty externí špulku.',
+  f_warn_printer: 'Vyber v editoru karty tiskárnu (zařízení z integrace Bambu Lab).',
+  f_desc_ams: 'Špulky v AMS: barva, název, typ filamentu, vlhkost',
+  f_desc_spool: 'Externí špulka tiskárny Bambu Lab',
+  f_desc_filament: 'AMS a externí špulka v jedné kartě',
+  e_ams: 'AMS', e_spool: 'Externí špulka', e_entity: 'Entita špulky (místo zařízení)', e_title: 'Nadpis',
+  e_display: 'Zobrazení', e_slots: 'Vlastní názvy a zbývající filament',
+  e_show_info: 'Vlhkost a teplota AMS', e_show_name: 'Název filamentu', e_show_type: 'Typ filamentu',
+  e_show_remaining: 'Zbývající filament', e_highlight_active: 'Zvýraznit aktivní špulku', e_style: 'Vzhled',
+  e_show_external: 'Externí špulka', e_external_position: 'Pozice externí špulky', e_show_labels: 'Popisky skupin (AMS / Externí)',
+  e_color_active: 'Barva aktivní špulky', e_remaining: 'Zbývající filament (entita)',
+  e_slot_name: 'Název – slot', e_slot_remaining: 'Zbývá – slot',
+  h_entity: 'Volitelné. Senzor špulky z integrace Bambu Lab', h_title: 'Prázdné = bez nadpisu',
+  h_show_remaining: 'Automaticky = jen u špulek Bambu s RFID, kde tiskárna stav opravdu zná',
+  h_remaining: 'Např. input_number s % nebo gramy',
+  o_auto: 'Automaticky (jen Bambu RFID)', o_always: 'Vždy, když ho tiskárna hlásí', o_never: 'Nikdy',
+  o_spool: 'Špulka', o_compact: 'Kompaktní', o_start: 'Vlevo', o_end: 'Vpravo',
+});
+Object.assign(BBL_I18N.en, {
+  f_empty: 'Empty', f_external: 'External', f_humidity: 'Humidity', f_temp: 'Temperature', f_active: 'Active',
+  f_warn_ams: 'Pick an AMS (a Bambu Lab device) in the card editor.',
+  f_warn_spool: 'Pick the external spool in the card editor.',
+  f_warn_printer: 'Pick a printer (a Bambu Lab device) in the card editor.',
+  f_desc_ams: 'AMS spools: color, name, filament type, humidity',
+  f_desc_spool: 'External spool of a Bambu Lab printer',
+  f_desc_filament: 'AMS and external spool in one card',
+  e_ams: 'AMS', e_spool: 'External spool', e_entity: 'Spool entity (instead of a device)', e_title: 'Title',
+  e_display: 'Display', e_slots: 'Custom names and remaining filament',
+  e_show_info: 'AMS humidity and temperature', e_show_name: 'Filament name', e_show_type: 'Filament type',
+  e_show_remaining: 'Remaining filament', e_highlight_active: 'Highlight the active spool', e_style: 'Style',
+  e_show_external: 'External spool', e_external_position: 'External spool position', e_show_labels: 'Group labels (AMS / External)',
+  e_color_active: 'Active spool color', e_remaining: 'Remaining filament (entity)',
+  e_slot_name: 'Name – slot', e_slot_remaining: 'Remaining – slot',
+  h_entity: 'Optional. A spool sensor from the Bambu Lab integration', h_title: 'Empty = no title',
+  h_show_remaining: 'Automatic = only Bambu spools with RFID, where the printer really knows it',
+  h_remaining: 'E.g. an input_number in % or grams',
+  o_auto: 'Automatic (Bambu RFID only)', o_always: 'Whenever the printer reports it', o_never: 'Never',
+  o_spool: 'Spool', o_compact: 'Compact', o_start: 'Left', o_end: 'Right',
+});
+
+const BBF_AMS_MODELS = ['AMS', 'AMS Lite', 'AMS 2 Pro', 'AMS HT', 'AMS 3H'];
+const BBF_ICONS = {
+  water: 'M12,20A6,6 0 0,1 6,14C6,10 12,3.25 12,3.25C12,3.25 18,10 18,14A6,6 0 0,1 12,20Z',
+  temp: 'M15 13V5A3 3 0 0 0 9 5V13A5 5 0 1 0 15 13M12 4A1 1 0 0 1 13 5V8H11V5A1 1 0 0 1 12 4Z',
+};
+
+const bbfEsc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const bbfHex = (c) => {
+  if (!c || typeof c !== 'string') return null;
+  const m = c.match(/^#?([0-9a-f]{6})([0-9a-f]{2})?$/i);
+  return m ? `#${m[1]}` : c;
+};
+const bbfIsZero = (v) => !v || /^0+$/.test(String(v));
+
+// Entities of a device by translation_key (sensor domain), sorted by the "slot" attribute
+function bbfEntities(hass, deviceId, key) {
+  if (!hass || !hass.entities || !deviceId) return [];
+  return Object.values(hass.entities)
+    .filter((e) => e.device_id === deviceId && e.translation_key === key && e.entity_id.startsWith('sensor.'))
+    .map((e) => e.entity_id)
+    .sort((a, b) => {
+      const sa = hass.states[a] && hass.states[a].attributes.slot;
+      const sb = hass.states[b] && hass.states[b].attributes.slot;
+      if (sa != null && sb != null && sa !== sb) return sa - sb;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+}
+const bbfEntity = (hass, deviceId, key) => bbfEntities(hass, deviceId, key)[0];
+const bbfDeviceName = (hass, id) => {
+  const d = hass && hass.devices && hass.devices[id];
+  return d ? (d.name_by_user || d.name || '') : '';
+};
+// AMS units and external spools attached to a printer (via_device_id)
+function bbfChildren(hass, printerId) {
+  const out = { ams: [], ext: [] };
+  if (!hass || !hass.devices || !printerId) return out;
+  Object.values(hass.devices)
+    .filter((d) => d.via_device_id === printerId)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
+    .forEach((d) => {
+      if (bbfEntities(hass, d.id, 'tray').length) out.ams.push(d.id);
+      else if (bbfEntities(hass, d.id, 'external_spool').length) out.ext.push(d.id);
+    });
+  return out;
+}
+
+// Turn a tray / external spool sensor into what a slot shows
+function bbfSlot(hass, entityId, cfg, ovr) {
+  const s = hass.states[entityId];
+  if (!s) return null;
+  ovr = ovr || {};
+  const a = s.attributes || {};
+  const off = ['unavailable', 'unknown'].includes(s.state) && !a.name;
+  const empty = !off && (a.empty === true || (!a.name && !a.type));
+  const cols = Array.isArray(a.cols) ? a.cols.map(bbfHex).filter(Boolean) : [];
+  const color = bbfHex(ovr.color) || bbfHex(a.color) || '#8a8a8a';
+  const slot = {
+    entity: entityId,
+    name: ovr.name || a.name || (off || empty ? '' : s.state),
+    type: a.type || '',
+    colors: cols.length > 1 ? cols : [color],
+    empty, off,
+    active: a.active === true,
+    remText: '', level: null,
+  };
+  const mode = cfg.show_remaining || 'auto';
+  if (mode !== 'never' && !empty && !off) {
+    const re = ovr.remaining && hass.states[ovr.remaining];
+    if (re) {
+      const v = parseFloat(re.state);
+      if (!isNaN(v)) {
+        const unit = re.attributes.unit_of_measurement || '';
+        slot.remText = `${Math.round(v)}${unit ? (unit === '%' ? ' %' : ` ${unit}`) : ''}`;
+        const max = parseFloat(ovr.max) || (unit === 'kg' ? 1 : unit === 'g' ? 1000 : 100);
+        slot.level = Math.max(0, Math.min(1, v / max));
+      }
+    } else {
+      const known = a.remain_enabled === true && typeof a.remain === 'number' && a.remain >= 0;
+      const rfid = !bbfIsZero(a.tag_uid) || !bbfIsZero(a.tray_uuid);
+      if (known && (mode === 'always' || rfid)) {
+        slot.remText = `${Math.round(a.remain)} %`;
+        slot.level = Math.max(0, Math.min(1, a.remain / 100));
+      }
+    }
+  }
+  return slot;
+}
+
+const BBF_STYLE = `
+  ha-card { padding: 12px; overflow: hidden; }
+  .warn { font-size: 13px; color: var(--secondary-text-color); }
+  .hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-height: 24px; }
+  .hdr.notitle { justify-content: flex-end; }
+  .ttl { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+          background: rgba(128,128,128,.12); border: 1px solid rgba(128,128,128,.28); color: var(--secondary-text-color); cursor: pointer; line-height: 1.5; }
+  .chip svg { flex-shrink: 0; }
+  .groups { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grp { min-width: 0; box-sizing: border-box; background: rgba(128,128,128,.07); border: 1px solid rgba(128,128,128,.18); border-radius: 12px; padding: 8px; }
+  .ghead { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0 2px 8px; min-height: 22px; }
+  .glabel { font-size: 12px; font-weight: 500; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ghead .chip { font-size: 11px; padding: 1px 7px; }
+  .slots { display: grid; gap: 8px; align-items: stretch; }
+  .slot { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; min-width: 0; cursor: pointer;
+          -webkit-tap-highlight-color: transparent; border-radius: 10px;
+          width: 100%; max-width: 150px; justify-self: center; }
+  .slot:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+  /* spool drawing */
+  .spool { position: relative; aspect-ratio: 5 / 4; border-radius: 9px; overflow: hidden; display: flex; flex-direction: column;
+           background: #2a2a2a; border: 2px solid #6b6b6b; box-sizing: border-box; transition: border-color .25s, box-shadow .25s; }
+  .fl { height: 15%; flex-shrink: 0; background: linear-gradient(#9a9a9a, #6e6e6e); }
+  .fl.b { background: linear-gradient(#6e6e6e, #8e8e8e); }
+  .core { flex: 1; display: flex; justify-content: center; align-items: stretch;
+          background: linear-gradient(90deg, #1f1f1f, #353535 50%, #1f1f1f); }
+  .wind { width: var(--w, 86%); background: var(--fil); position: relative; transition: width .6s ease; }
+  .wind::after { content: ''; position: absolute; inset: 0;
+          background: repeating-linear-gradient(90deg, rgba(0,0,0,.26) 0 1px, transparent 1px 4px),
+                      linear-gradient(90deg, rgba(0,0,0,.35), rgba(255,255,255,.14) 45%, rgba(255,255,255,.04) 60%, rgba(0,0,0,.35)); }
+  .slot.empty .wind, .slot.off .wind { display: none; }
+  .slot.off .spool { opacity: .45; }
+  .val { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; font-size: 12px; font-weight: 500; color: #fff;
+         background: rgba(0,0,0,.5); padding: 2px 6px; border-radius: 6px; white-space: nowrap; backdrop-filter: blur(3px); }
+  .slot.empty .val, .slot.off .val { background: none; color: #9a9a9a; }
+  /* compact */
+  .dotwrap { display: flex; justify-content: center; padding-top: 2px; }
+  .dot { position: relative; width: 38px; height: 38px; border-radius: 50%; background: var(--fil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 0 0 2px rgba(128,128,128,.35);
+         display: flex; align-items: center; justify-content: center; transition: box-shadow .25s; }
+  .dot::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--card-background-color, #1c1c1c); box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
+  .slot.empty .dot, .slot.off .dot { background: transparent; box-shadow: inset 0 0 0 2px rgba(128,128,128,.45); }
+  .cval { min-height: 14px; text-align: center; font-size: 11px; font-weight: 500; color: var(--primary-text-color); margin-top: -2px; }
+  /* label under the spool */
+  .lbl { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: center; padding: 5px 4px; border-radius: 8px;
+         background: rgba(128,128,128,.14); border: 1px solid transparent; transition: border-color .25s; min-height: 32px; box-sizing: border-box; }
+  .nm { font-size: 11px; line-height: 1.25; color: var(--primary-text-color); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; hyphens: auto; }
+  .ty { font-size: 10px; line-height: 1.2; color: var(--secondary-text-color); letter-spacing: .3px; }
+  .slot.empty .nm, .slot.off .nm { color: var(--secondary-text-color); }
+  /* active spool */
+  .slot.active .spool { border-color: var(--bbf-active); box-shadow: 0 0 10px color-mix(in srgb, var(--bbf-active) 55%, transparent); }
+  .slot.active .dot { box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 0 0 3px var(--bbf-active), 0 0 10px var(--bbf-active); }
+  .slot.active .lbl { border-color: color-mix(in srgb, var(--bbf-active) 70%, transparent); }
+`;
+
+class BambuLabFilamentBase extends HTMLElement {
+  setConfig(config) {
+    this._cfg = { ...(config || {}) };
+    this._html = null;
+    this.style.setProperty('--bbf-active', bblColor(this._cfg.color_active, '#4A9EF0'));
+  }
+
+  getCardSize() { return 3; }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this.shadowRoot) {
+      const root = this.attachShadow({ mode: 'open' });
+      root.innerHTML = `<style>${BBF_STYLE}</style><ha-card><div id="body"></div></ha-card>`;
+      root.addEventListener('click', (ev) => {
+        const el = ev.composedPath().find((n) => n.dataset && n.dataset.e);
+        if (el) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: el.dataset.e }, bubbles: true, composed: true }));
+      });
+      this._body = root.getElementById('body');
+    }
+    const html = this._render(hass, bblT(hass));
+    if (html !== this._html) { this._body.innerHTML = html; this._html = html; }
+  }
+
+  // ---- shared pieces ----
+  _opt(key, def) { const v = this._cfg[key]; return v === undefined ? def : v; }
+
+  _slotHtml(sl, T) {
+    const style = this._opt('style', 'spool');
+    const showName = this._opt('show_name', true);
+    const showType = this._opt('show_type', true);
+    const active = sl.active && this._opt('highlight_active', true);
+    const cls = ['slot', sl.empty ? 'empty' : '', sl.off ? 'off' : '', active ? 'active' : ''].join(' ').trim();
+    const n = sl.colors.length;
+    const fil = n > 1
+      ? `linear-gradient(90deg, ${sl.colors.map((c, i) => `${c} ${Math.round((i / n) * 100)}% ${Math.round(((i + 1) / n) * 100)}%`).join(', ')})`
+      : sl.colors[0];
+    const vars = `--fil:${bbfEsc(fil)};${sl.level != null ? `--w:${Math.round(30 + sl.level * 56)}%;` : ''}`;
+    const name = sl.empty ? T.f_empty : (sl.off ? '—' : sl.name);
+    const tip = [sl.name, sl.type, sl.remText, sl.active ? T.f_active : ''].filter(Boolean).join(' · ');
+    let pic;
+    if (style === 'compact') {
+      pic = `<div class="dotwrap"><div class="dot"></div></div>${this._opt('show_remaining', 'auto') !== 'never' ? `<div class="cval">${bbfEsc(sl.remText)}</div>` : ''}`;
+    } else {
+      const val = sl.remText || (sl.empty || sl.off ? '—' : '');
+      pic = `<div class="spool"><div class="fl"></div><div class="core"><div class="wind"></div></div><div class="fl b"></div>${val ? `<span class="val">${bbfEsc(val)}</span>` : ''}</div>`;
+    }
+    const lbl = (showName || (showType && sl.type))
+      ? `<div class="lbl">${showName ? `<div class="nm">${bbfEsc(name)}</div>` : ''}${showType && sl.type && !sl.empty ? `<div class="ty">${bbfEsc(sl.type)}</div>` : ''}</div>`
+      : '';
+    return `<button class="${cls}" style="${vars}" data-e="${bbfEsc(sl.entity)}" title="${bbfEsc(tip)}">${pic}${lbl}</button>`;
+  }
+
+  _slotsHtml(slots, T) {
+    return `<div class="slots" style="grid-template-columns:repeat(${Math.max(slots.length, 1)},minmax(0,1fr))">${slots.map((s) => this._slotHtml(s, T)).join('')}</div>`;
+  }
+
+  _chipsHtml(hass, amsId) {
+    if (!this._opt('show_info', true)) return '';
+    // AMS Lite has no humidity / temperature sensor, it only reports zeros
+    const dev = hass.devices && hass.devices[amsId];
+    if (dev && /lite/i.test(dev.model || '')) return '';
+    const chips = [];
+    const hum = bbfEntity(hass, amsId, 'humidity');
+    const hidx = bbfEntity(hass, amsId, 'humidity_index');
+    const tmp = bbfEntity(hass, amsId, 'ams_temp');
+    const num = (id) => { const s = id && hass.states[id]; const v = s ? parseFloat(s.state) : NaN; return isNaN(v) ? null : v; };
+    const nz = (v) => (v ? v : null);
+    const h = nz(num(hum)), hi = nz(num(hidx)), t = nz(num(tmp));
+    if (h != null) chips.push(`<span class="chip" data-e="${hum}">${bblsvg(BBF_ICONS.water, 13)}${Math.round(h)} %</span>`);
+    else if (hi != null) chips.push(`<span class="chip" data-e="${hidx}">${bblsvg(BBF_ICONS.water, 13)}${Math.round(hi)}/5</span>`);
+    if (t != null) chips.push(`<span class="chip" data-e="${tmp}">${bblsvg(BBF_ICONS.temp, 13)}${Math.round(t)} °C</span>`);
+    return chips.length ? `<div class="chips">${chips.join('')}</div>` : '';
+  }
+
+  _header(title, chips) {
+    if (!title && !chips) return '';
+    return `<div class="hdr${title ? '' : ' notitle'}">${title ? `<div class="ttl">${bbfEsc(title)}</div>` : ''}${chips}</div>`;
+  }
+
+  // per-slot overrides: `overrides: { sensor.x: { name, remaining, color, max } }`
+  _ovr(entityId, slotNo) {
+    const o = { ...((this._cfg.overrides || {})[entityId] || {}) };
+    if (slotNo != null) {
+      if (this._cfg[`name_${slotNo}`]) o.name = this._cfg[`name_${slotNo}`];
+      if (this._cfg[`remaining_${slotNo}`]) o.remaining = this._cfg[`remaining_${slotNo}`];
+    }
+    return o;
+  }
+
+  _amsSlots(hass, amsId, flat) {
+    return bbfEntities(hass, amsId, 'tray').map((id) => {
+      const no = hass.states[id] && hass.states[id].attributes.slot;
+      return bbfSlot(hass, id, this._cfg, this._ovr(id, flat ? no : null));
+    }).filter(Boolean);
+  }
+
+  static _getStub(hass, test) {
+    const d = hass && hass.devices && Object.values(hass.devices).find((x) => test(x));
+    return d ? d.id : undefined;
+  }
+}
+
+// ---------------------------------------------------------------- AMS card
+class BambuLabAmsCard extends BambuLabFilamentBase {
+  getGridOptions() { return { columns: 12, rows: 'auto', min_columns: 3 }; }
+  _render(hass, T) {
+    const id = this._cfg.ams;
+    const slots = id ? this._amsSlots(hass, id, true) : [];
+    if (!slots.length) return `<div class="warn">${T.f_warn_ams}</div>`;
+    return this._header(this._cfg.title, this._chipsHtml(hass, id)) + this._slotsHtml(slots, T);
+  }
+  static getStubConfig(hass) {
+    const ams = BambuLabFilamentBase._getStub(hass, (d) => bbfEntities(hass, d.id, 'tray').length);
+    return ams ? { ams } : {};
+  }
+  static getConfigElement() { const el = document.createElement('bambulab-filament-editor'); el.kind = 'ams'; return el; }
+}
+
+// ---------------------------------------------------------------- External spool card
+class BambuLabSpoolCard extends BambuLabFilamentBase {
+  getGridOptions() { return { columns: 3, rows: 'auto', min_columns: 2 }; }
+  _render(hass, T) {
+    let ids = [];
+    if (this._cfg.entity) ids = [this._cfg.entity];
+    else if (this._cfg.spool) ids = bbfEntities(hass, this._cfg.spool, 'external_spool');
+    const slots = ids.map((id) => {
+      const o = this._ovr(id, null);
+      if (this._cfg.name) o.name = this._cfg.name;
+      if (this._cfg.remaining) o.remaining = this._cfg.remaining;
+      return bbfSlot(hass, id, this._cfg, o);
+    }).filter(Boolean);
+    if (!slots.length) return `<div class="warn">${T.f_warn_spool}</div>`;
+    return this._header(this._cfg.title, '') + this._slotsHtml(slots, T);
+  }
+  static getStubConfig(hass) {
+    const spool = BambuLabFilamentBase._getStub(hass, (d) => bbfEntities(hass, d.id, 'external_spool').length);
+    return spool ? { spool } : {};
+  }
+  static getConfigElement() { const el = document.createElement('bambulab-filament-editor'); el.kind = 'spool'; return el; }
+}
+
+// ---------------------------------------------------------------- AMS + external spool card
+class BambuLabFilamentCard extends BambuLabFilamentBase {
+  getGridOptions() { return { columns: 12, rows: 'auto', min_columns: 6 }; }
+  _render(hass, T) {
+    const c = this._cfg;
+    if (!c.printer) return `<div class="warn">${T.f_warn_printer}</div>`;
+    const ch = bbfChildren(hass, c.printer);
+    const amsIds = Array.isArray(c.ams) && c.ams.length ? c.ams : ch.ams;
+    const labels = this._opt('show_labels', true);
+    const groups = [];
+    amsIds.forEach((id) => {
+      const slots = this._amsSlots(hass, id, amsIds.length === 1);
+      if (!slots.length) return;
+      const chips = this._chipsHtml(hass, id);
+      const pName = bbfDeviceName(hass, c.printer);
+      let name = bbfDeviceName(hass, id);
+      if (pName && name.startsWith(`${pName}_`)) name = name.slice(pName.length + 1);
+      name = name.replace(/_/g, ' ') || 'AMS';
+      groups.push({ n: slots.length, head: (labels || chips) ? `<div class="ghead"><span class="glabel">${labels ? bbfEsc(name) : ''}</span>${chips}</div>` : '', slots });
+    });
+    if (this._opt('show_external', true)) {
+      const ext = [];
+      ch.ext.forEach((d) => bbfEntities(hass, d, 'external_spool').forEach((id) => {
+        const s = bbfSlot(hass, id, c, this._ovr(id, null));
+        if (s) ext.push(s);
+      }));
+      if (ext.length) {
+        const g = { n: ext.length, ext: true, head: labels ? `<div class="ghead"><span class="glabel">${T.f_external}</span></div>` : '', slots: ext };
+        if (this._opt('external_position', 'start') === 'end') groups.push(g); else groups.unshift(g);
+      }
+    }
+    if (!groups.length) return `<div class="warn">${T.f_warn_printer}</div>`;
+    // keep group headers the same height so the spools line up
+    const anyHead = groups.some((g) => g.head);
+    const body = groups.map((g) => {
+      const head = g.head || (anyHead ? '<div class="ghead"></div>' : '');
+      return `<div class="grp" style="flex:${g.n} 1 ${g.n * 64 + 18}px">${head}${this._slotsHtml(g.slots, T)}</div>`;
+    }).join('');
+    return this._header(c.title, '') + `<div class="groups">${body}</div>`;
+  }
+  static getStubConfig(hass) {
+    const ent = hass && hass.entities && Object.values(hass.entities).find((x) => x.platform === 'bambu_lab' && x.translation_key === 'print_status');
+    return ent && ent.device_id ? { printer: ent.device_id } : {};
+  }
+  static getConfigElement() { const el = document.createElement('bambulab-filament-editor'); el.kind = 'filament'; return el; }
+}
+
+// ---------------------------------------------------------------- Editor (shared)
+function bbfSchema(kind, T) {
+  const amsFilter = BBF_AMS_MODELS.map((model) => ({ integration: 'bambu_lab', model }));
+  const display = [
+    { name: 'show_remaining', required: true, selector: { select: { mode: 'dropdown', options: [
+      { value: 'auto', label: T.o_auto }, { value: 'always', label: T.o_always }, { value: 'never', label: T.o_never }] } } },
+    { name: 'style', required: true, selector: { select: { mode: 'dropdown', options: [{ value: 'spool', label: T.o_spool }, { value: 'compact', label: T.o_compact }] } } },
+    { type: 'grid', name: '', flatten: true, schema: [
+      { name: 'show_name', selector: { boolean: {} } },
+      { name: 'show_type', selector: { boolean: {} } },
+      { name: 'highlight_active', selector: { boolean: {} } },
+      ...(kind !== 'spool' ? [{ name: 'show_info', selector: { boolean: {} } }] : []),
+      ...(kind === 'filament' ? [{ name: 'show_external', selector: { boolean: {} } }, { name: 'show_labels', selector: { boolean: {} } }] : []),
+    ] },
+    ...(kind === 'filament' ? [{ name: 'external_position', required: true, selector: { select: { mode: 'dropdown', options: [{ value: 'start', label: T.o_start }, { value: 'end', label: T.o_end }] } } }] : []),
+    { name: 'color_active', selector: { ui_color: {} } },
+  ];
+  const head = {
+    ams: [{ name: 'ams', required: true, selector: { device: { filter: amsFilter } } }],
+    spool: [
+      { name: 'spool', selector: { device: { filter: { integration: 'bambu_lab', model: 'External Spool' } } } },
+      { name: 'entity', selector: { entity: { domain: 'sensor', integration: 'bambu_lab' } } },
+    ],
+    filament: [{ name: 'printer', required: true, selector: { device: { filter: { integration: 'bambu_lab' } } } }],
+  }[kind];
+  const slots = kind === 'ams'
+    ? [{ name: 'slots', type: 'expandable', flatten: true, icon: 'mdi:form-textbox', schema: [1, 2, 3, 4].map((i) => ({ type: 'grid', name: '', flatten: true, schema: [
+      { name: `name_${i}`, selector: { text: {} } },
+      { name: `remaining_${i}`, selector: { entity: { domain: ['sensor', 'input_number', 'number'] } } }] })) }]
+    : kind === 'spool'
+      ? [{ name: 'slots', type: 'expandable', flatten: true, icon: 'mdi:form-textbox', schema: [{ type: 'grid', name: '', flatten: true, schema: [
+        { name: 'name', selector: { text: {} } },
+        { name: 'remaining', selector: { entity: { domain: ['sensor', 'input_number', 'number'] } } }] }] }]
+      : [];
+  return [
+    ...head,
+    { name: 'title', selector: { text: {} } },
+    { name: 'display', type: 'expandable', flatten: true, icon: 'mdi:eye-outline', schema: display },
+    ...slots,
+  ];
+}
+
+const BBF_DEFAULTS = { show_name: true, show_type: true, highlight_active: true, show_info: true, show_external: true, show_labels: true,
+  show_remaining: 'auto', style: 'spool', external_position: 'start' };
+
+class BambuLabFilamentEditor extends HTMLElement {
+  setConfig(config) { this._config = config || {}; this._render(); }
+  set hass(hass) { this._hass = hass; this._render(); }
+  _render() {
+    if (!this._hass || !this._config) return;
+    const T = bblT(this._hass);
+    if (!this._form) {
+      this._form = document.createElement('ha-form');
+      this._form.computeLabel = (s) => {
+        const L = bblT(this._hass);
+        const m = s.name.match(/^(name|remaining)_(\d)$/);
+        if (m) return `${m[1] === 'name' ? L.e_slot_name : L.e_slot_remaining} ${m[2]}`;
+        return L[`e_${s.name}`] || s.name;
+      };
+      this._form.computeHelper = (s) => bblT(this._hass)[`h_${s.name}`] || '';
+      this._form.addEventListener('value-changed', (ev) => {
+        const cfg = { ...ev.detail.value };
+        Object.keys(cfg).forEach((k) => {
+          if (cfg[k] === '' || cfg[k] === undefined || cfg[k] === null || BBF_DEFAULTS[k] === cfg[k]) delete cfg[k];
+        });
+        this._config = { type: this._config.type, ...cfg };
+        this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true }));
+      });
+      this.appendChild(this._form);
+    }
+    if (this._lang !== bblLang(this._hass)) { this._form.schema = bbfSchema(this.kind || 'ams', T); this._lang = bblLang(this._hass); }
+    this._form.hass = this._hass;
+    this._form.data = { ...BBF_DEFAULTS, ...this._config };
+  }
+}
+
+window.customCards = window.customCards || [];
+[
+  ['bambulab-ams-card', BambuLabAmsCard, 'Bambu Lab AMS', 'f_desc_ams'],
+  ['bambulab-spool-card', BambuLabSpoolCard, 'Bambu Lab External Spool', 'f_desc_spool'],
+  ['bambulab-filament-card', BambuLabFilamentCard, 'Bambu Lab Filaments', 'f_desc_filament'],
+].forEach(([tag, cls, name, desc]) => {
+  if (!customElements.get(tag)) customElements.define(tag, cls);
+  if (!window.customCards.find((c) => c.type === tag)) {
+    const T = BBL_I18N[(navigator.language || 'en').split('-')[0]] || BBL_I18N.en;
+    window.customCards.push({ type: tag, name, description: T[desc], preview: true });
+  }
+});
+if (!customElements.get('bambulab-filament-editor')) customElements.define('bambulab-filament-editor', BambuLabFilamentEditor);

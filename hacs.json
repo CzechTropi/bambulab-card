@@ -1,5 +1,5 @@
 {
-  "name": "Bambu Lab Printer Card",
+  "name": "Bambu Lab Printer & Filament Cards",
   "filename": "bambulab-card.js",
   "render_readme": true,
   "homeassistant": "2024.8.0"
