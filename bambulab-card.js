@@ -321,7 +321,11 @@ class BambuLabCard extends HTMLElement {
   _fmtTime(iso) {
     if (!iso || ['unknown', 'unavailable'].includes(iso)) return '';
     const d = new Date(iso); if (isNaN(d)) return '';
-    return d.toLocaleTimeString(this._lang || undefined, { hour: '2-digit', minute: '2-digit' });
+    const tf = this._hass && this._hass.locale && this._hass.locale.time_format;
+    const opts = { hour: '2-digit', minute: '2-digit' };
+    if (tf === '24') opts.hourCycle = 'h23';
+    else if (tf === '12') opts.hour12 = true;
+    return d.toLocaleTimeString(tf === 'system' ? undefined : (this._lang || undefined), opts);
   }
   _fmtDur(h) {
     if (h == null || h <= 0) return '';
