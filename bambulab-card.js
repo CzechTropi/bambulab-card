@@ -923,7 +923,7 @@ function bbfSchema(kind, T) {
     { name: 'show_remaining', required: true, selector: { select: { mode: 'dropdown', options: [
       { value: 'auto', label: T.o_auto }, { value: 'always', label: T.o_always }, { value: 'never', label: T.o_never }] } } },
     { name: 'style', required: true, selector: { select: { mode: 'dropdown', options: [{ value: 'spool', label: T.o_spool }, { value: 'compact', label: T.o_compact }] } } },
-    { type: 'grid', name: '', flatten: true, schema: [
+    { type: 'grid', name: '', flatten: true, column_min_width: '220px', schema: [
       { name: 'show_name', selector: { boolean: {} } },
       { name: 'show_type', selector: { boolean: {} } },
       { name: 'highlight_active', selector: { boolean: {} } },
