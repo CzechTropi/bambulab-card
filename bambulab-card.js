@@ -647,9 +647,11 @@ function bbfSlot(hass, entityId, cfg, ovr) {
 }
 
 const BBF_STYLE = `
-  ha-card { padding: 12px; overflow: hidden; }
+  :host { display: block; height: 100%; }
+  ha-card { padding: 12px; overflow: hidden; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
+  #body { flex: 1; }
   .warn { font-size: 13px; color: var(--secondary-text-color); }
-  .hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-height: 24px; }
+  .hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-height: 28px; }
   .hdr.notitle { justify-content: flex-end; }
   .ttl { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }

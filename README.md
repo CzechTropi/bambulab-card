@@ -140,6 +140,8 @@ type: custom:bambulab-spool-card
 spool: <device_id>            # the External Spool device (or entity: sensor.xxx_external_spool)
 ```
 
+Tip: next to an AMS card, give the spool card a `title` too (e.g. *External*) – both cards then line up exactly.
+
 | Option | Cards | Default | Description |
 | --- | --- | --- | --- |
 | `printer` | filament | – | **Required.** Printer device |
