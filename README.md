@@ -16,6 +16,7 @@ Works with all Bambu Lab printers supported by the [ha-bambulab](https://github.
   <tr>
     <td align="center"><img src="images/preview.png" width="300"><br><sub>Print preview – one tap on the image icon</sub></td>
     <td align="center"><img src="images/preparing.png" width="300"><br><sub>Current stage while preparing the print</sub></td>
+    <td align="center"><img src="images/editor.png" width="300"><br><sub>Visual editor</sub></td>
   </tr>
 </table>
 
