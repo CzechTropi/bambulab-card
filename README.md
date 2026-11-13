@@ -2,6 +2,8 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
 
+[![Open in your Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CzechTropi&repository=bambulab-card&category=plugin)
+
 **English** · [Česky](#česky)
 
 A minimalist Home Assistant dashboard card for Bambu Lab 3D printers: live camera / print preview, nozzle & bed temperatures, print progress with ETA, HMS errors, chamber light and smart-plug power.
@@ -40,12 +42,14 @@ The card finds the printer entities automatically by their `translation_key` on 
 
 ## Installation
 
-### HACS (recommended)
+### Marketplace / HACS (recommended)
 
-1. HACS → ⋮ (top right) → **Custom repositories**
-2. Repository: `https://github.com/CzechTropi/bambulab-card`, type: **Dashboard**
-3. Find **Bambu Lab Printer & Filament Cards** in HACS and download it
-4. Reload the browser (Ctrl+F5)
+[![Open in your Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CzechTropi&repository=bambulab-card&category=plugin)
+
+Click the button above and download the card, then reload the browser (Ctrl+F5). Or by hand:
+
+- **Home Assistant 2026.11+:** Settings → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`
+- **Older versions (HACS):** HACS → ⋮ → **Custom repositories** → the same URL, type **Dashboard**
 
 ### Manual
 
@@ -144,12 +148,14 @@ Funguje se všemi tiskárnami Bambu Lab, které podporuje integrace [ha-bambulab
 
 Karta si entity najde sama podle `translation_key` na vybraném zařízení, takže jí nevadí přejmenování entit. Pokud se některá část nezobrazuje (vrstvy, čas startu/konce…), zkontroluj, že je daná entita v nastavení zařízení **povolená**.
 
-### Instalace přes HACS
+### Instalace (Marketplace / HACS)
 
-1. HACS → ⋮ (vpravo nahoře) → **Vlastní repozitáře**
-2. Repozitář: `https://github.com/CzechTropi/bambulab-card`, typ: **Dashboard**
-3. Najdi v HACS **Bambu Lab Printer & Filament Cards** a stáhni
-4. Obnov prohlížeč (Ctrl+F5)
+[![Open in your Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CzechTropi&repository=bambulab-card&category=plugin)
+
+Klikni na tlačítko, stáhni kartu a obnov prohlížeč (Ctrl+F5). Nebo ručně:
+
+- **Home Assistant 2026.11+:** Nastavení → **Marketplace** → **Přidat z odkazu** → `https://github.com/CzechTropi/bambulab-card`
+- **Starší verze (HACS):** HACS → ⋮ → **Vlastní repozitáře** → stejná adresa, typ **Dashboard**
 
 ### Použití
 
