@@ -43,9 +43,9 @@ You'll find them in the card picker as **CzechTropi · Bambu Lab Printer / AMS /
 
 ## AMS card
 
-Shows one or more AMS units in the order you pick them. Each spool shows its color, filament name and type; the spool the printer is using is highlighted. With several AMS, as many fit in a row as the card width allows and every spool keeps the same size – on a phone they stack.
+Shows one or more AMS units in the order you pick them. Each spool shows its color, filament name and type; the spool the printer is using is highlighted. Several AMS are stacked under each other in a normal dashboard column; give the card more width (e.g. a section spanning two columns) and they sit side by side. Every spool keeps the same size either way.
 
-![Two AMS units](images/ams-multi.png)
+<img src="images/ams-two.png" width="460" alt="Two AMS units">
 
 The AMS Lite has no humidity or temperature sensor, so you can pick **your own sensors** – e.g. from a filament dryer. It works for any AMS: your sensor replaces the built-in reading.
 
@@ -123,7 +123,7 @@ Ve výběru karet je najdeš jako **CzechTropi · Bambu Lab Printer / AMS / Spoo
 
 **Printer** – živá kamera (klepnutím přepneš na náhled tisku), aktuální fáze tisku, teplota trysky a podložky, průběh s počtem vrstev a časem dokončení, HMS chyby s odkazem na wiki Bambu, světlo a volitelně chytrá zásuvka s příkonem.
 
-**AMS** – jedno nebo více AMS v pořadí, v jakém je vybereš. U každé špulky barva, název a typ filamentu, aktivní špulka je zvýrazněná. Víc AMS se vedle sebe vejde podle šířky karty, na telefonu jsou pod sebou. Ke každému AMS můžeš zvolit **vlastní senzor vlhkosti a teploty** – hodí se hlavně u AMS Lite, které vlastní senzory nemá, třeba se senzorem ze sušičky.
+**AMS** – jedno nebo více AMS v pořadí, v jakém je vybereš. U každé špulky barva, název a typ filamentu, aktivní špulka je zvýrazněná. Víc AMS je v běžném sloupci plochy pod sebou; když kartě dáš víc místa (třeba sekci přes dva sloupce), jsou vedle sebe. Ke každému AMS můžeš zvolit **vlastní senzor vlhkosti a teploty** – hodí se hlavně u AMS Lite, které vlastní senzory nemá, třeba se senzorem ze sušičky.
 
 **Spool** – externí špulka (funguje i u tiskáren bez AMS) nebo jeden slot AMS. Vzhled normální, slim, ležící špulka nebo panel. Může se zobrazit jen ve chvíli, kdy se z ní tiskne. Nad nebo pod kartou AMS s ní lícuje.
 
