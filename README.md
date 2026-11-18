@@ -6,98 +6,130 @@
 
 **English** · [Česky](#česky)
 
-Minimalist Home Assistant cards for Bambu Lab 3D printers, for the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration. In the card picker search for **CzechTropi**.
+Three minimalist Home Assistant dashboard cards for Bambu Lab 3D printers, built on the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration:
 
-| Card | Shows |
-| --- | --- |
-| **Printer** | Camera / print preview, nozzle & bed temperature, progress with ETA, HMS errors, chamber light, smart plug |
-| **AMS** | One or more AMS units; optional own humidity / temperature sensors (e.g. from a filament dryer) |
-| **Spool** | The external spool (also without an AMS) or one AMS tray – normal, slim, lying spool or panel |
+- **Printer** – camera, print progress, temperatures and errors at a glance
+- **AMS** – the spools in one or more AMS units, styled like Bambu Studio
+- **Spool** – the external spool (or a single AMS tray) in one of four looks
 
-Everything is set up in the visual editor, in Czech or English (follows your Home Assistant language).
+You'll find them in the card picker as **CzechTropi · Bambu Lab Printer / AMS / Spool**. Every option is in the visual editor, in English or Czech depending on your Home Assistant language.
 
 ## Printer card
 
 ![Printing, paused with an error, finished and powered off](images/overview.png)
 
+- Live camera, one tap switches to the print preview (cover image)
+- Status line with the current stage – bed leveling, heating, filament change, pause reason…
+- Nozzle and bed temperature (current / target)
+- Progress bar, layers, remaining time, start and estimated finish
+- HMS and print errors with a link to the Bambu wiki
+- Chamber light toggle and an optional smart plug with live wattage
+
 <table>
   <tr>
-    <td align="center"><img src="images/preview.png" width="260"><br><sub>Print preview – tap the image icon</sub></td>
-    <td align="center"><img src="images/preparing.png" width="260"><br><sub>Current stage while preparing</sub></td>
+    <td align="center"><img src="images/preview.png" width="260"><br><sub>Print preview</sub></td>
+    <td align="center"><img src="images/preparing.png" width="260"><br><sub>Stage while preparing the print</sub></td>
     <td align="center"><img src="images/editor.png" width="260"><br><sub>Visual editor</sub></td>
   </tr>
 </table>
 
-## AMS & Spool cards
+| Option | Description |
+| --- | --- |
+| `printer` | **Required.** The printer device |
+| `power_switch` | Smart plug powering the printer – wattage is read from the same device |
+| `camera` | Camera entity, default: the printer camera |
+| `name` | Card title, default: the device name |
+| `icon_*`, `color_*` | Own icons and colors for light, power, nozzle, bed, usage and progress |
 
-Put the Spool card above or below the AMS card and they line up as one block.
+## AMS card
+
+Shows one or more AMS units in the order you pick them. Each spool shows its color, filament name and type; the spool the printer is using is highlighted. With several AMS, as many fit in a row as the card width allows and every spool keeps the same size – on a phone they stack.
+
+![Two AMS units](images/ams-multi.png)
+
+The AMS Lite has no humidity or temperature sensor, so you can pick **your own sensors** – e.g. from a filament dryer. It works for any AMS: your sensor replaces the built-in reading.
+
+<img src="images/custom-sensors.png" width="460" alt="AMS Lite with the humidity and temperature of a dryer">
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ams` | – | **Required.** AMS units, in display order |
+| `custom_humidity`, `custom_temperature` | – | Own sensors (in the editor for each AMS; YAML with several AMS: `custom_sensors`) |
+| `show_info` | on | Humidity and temperature of each AMS |
+| `show_labels` | on | AMS names |
+| `style` | `spool` | `spool` or `compact` (color dots) |
+
+## Spool card
+
+Shows the external spool – so it also works for printers without an AMS – or a single AMS tray. Placed above or below the AMS card, it lines up with it.
 
 ![External spool above the AMS card](images/filaments.png)
 
-**AMS** – several AMS fit as many in a row as the width allows and every spool keeps the same size. The AMS Lite has no humidity or temperature sensor, but you can pick your own for any AMS, e.g. from a dryer.
+<img src="images/spool-looks.png" width="520" alt="Spool card looks: normal, slim, lying spool and panel">
 
-![Two AMS units](images/filaments-multi.png)
+| Option | Default | Description |
+| --- | --- | --- |
+| `spool` | – | **Required.** The external spool, or an AMS together with `tray` |
+| `external_style` | `normal` | `normal`, `slim`, `ribbon` (lying spool) or `panel` |
+| `show_external` | `always` | `always`, or `active` – the card shows only while the printer prints from this spool |
 
-<img src="images/custom-sensors.png" width="420" alt="AMS Lite with the humidity and temperature of a dryer">
-
-**Spool** – four looks. Optionally it shows only while the printer prints from it.
-
-![Spool card: slim, lying spool, panel and normal](images/spool-styles.png)
-
-The remaining % is shown only for Bambu spools with RFID – other filament always reports 100 %.
+**Both filament cards** also have `title`, `show_name`, `show_type`, `highlight_active` and `color_active`, and `show_remaining`. The remaining percentage is only known for Bambu spools with RFID – the printer reports 100 % for anything else, so by default it's hidden there.
 
 ## Installation
 
-Click the button at the top, download the card and reload the browser (Ctrl+F5). Or by hand:
+Click the button at the top, download the card and reload the browser (Ctrl+F5). Or add it by hand:
 
 - **Home Assistant 2026.11+:** Settings → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`
 - **Older versions (HACS):** HACS → ⋮ → **Custom repositories** → the same URL, type **Dashboard**
 
-Requires Home Assistant 2024.8+ and the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration. If a part of the printer card is missing (layers, start / end time), enable that entity in the device settings.
+Needs Home Assistant 2024.8+ and the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration. The cards find the printer's entities by themselves, so renamed entities are fine. If something is missing (layers, start / end time), enable that entity in the device settings.
 
-## YAML
+## YAML example
 
 ```yaml
 type: custom:bambulab-card
 printer: <device_id>
-power_switch: switch.printer_plug   # optional, wattage from the same device
-camera: camera.my_camera            # optional, default: printer camera
+power_switch: switch.printer_plug
 ```
 
 ```yaml
 type: custom:bambulab-ams-card
-ams:                                # in this order
+ams:
   - <AMS device_id>
-custom_humidity: sensor.dryer_humidity        # optional (several AMS: custom_sensors per AMS)
-custom_temperature: sensor.dryer_temperature  # optional
+custom_humidity: sensor.dryer_humidity
+custom_temperature: sensor.dryer_temperature
 ```
 
 ```yaml
 type: custom:bambulab-spool-card
-spool: <external spool device_id>   # or an AMS + tray: 1–4
-external_style: ribbon              # normal, slim, ribbon (lying spool), panel
-show_external: active               # always, active = only while in use
+spool: <external spool device_id>
+external_style: ribbon
+show_external: active
 ```
-
-Common options: `title`, `show_remaining` (`auto` / `always` / `never`), `style` (`spool` / `compact`), `show_name`, `show_type`, `highlight_active`, `color_active`. Printer card: custom `icon_*` and `color_*`.
 
 ---
 
 ## Česky
 
-Minimalistické karty do Home Assistantu pro 3D tiskárny Bambu Lab, pro integraci [ha-bambulab](https://github.com/greghesp/ha-bambulab). Ve výběru karet hledej **CzechTropi**.
+Tři minimalistické karty do Home Assistantu pro 3D tiskárny Bambu Lab, postavené na integraci [ha-bambulab](https://github.com/greghesp/ha-bambulab):
 
-| Karta | Co ukazuje |
-| --- | --- |
-| **Printer** | Kamera / náhled tisku, teplota trysky a podložky, průběh s časem dokončení, HMS chyby, světlo, chytrá zásuvka |
-| **AMS** | Jedno nebo více AMS; volitelně vlastní senzory vlhkosti a teploty (třeba ze sušičky) |
-| **Spool** | Externí špulka (i bez AMS) nebo slot AMS – normální, slim, ležící špulka nebo panel; může se ukázat jen při tisku z ní |
+- **Printer** – kamera, průběh tisku, teploty a chyby na první pohled
+- **AMS** – špulky v jednom nebo více AMS, ve stylu Bambu Studia
+- **Spool** – externí špulka (nebo jeden slot AMS) ve čtyřech podobách
+
+Ve výběru karet je najdeš jako **CzechTropi · Bambu Lab Printer / AMS / Spool**. Všechno se nastavuje ve vizuálním editoru, česky nebo anglicky podle jazyka Home Assistantu.
 
 <img src="images/czech.png" width="300" alt="Karta tiskárny v češtině">
 
-**Instalace:** klikni na tlačítko nahoře, stáhni kartu a obnov prohlížeč (Ctrl+F5). Nebo Nastavení → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`. Vše se nastavuje ve vizuálním editoru, YAML je v [anglické části](#yaml).
+**Printer** – živá kamera (klepnutím přepneš na náhled tisku), aktuální fáze tisku, teplota trysky a podložky, průběh s počtem vrstev a časem dokončení, HMS chyby s odkazem na wiki Bambu, světlo a volitelně chytrá zásuvka s příkonem.
 
-Kartu Spool dej nad nebo pod kartu AMS a budou lícovat. Procenta zbývajícího filamentu se ukážou jen u špulek Bambu s RFID.
+**AMS** – jedno nebo více AMS v pořadí, v jakém je vybereš. U každé špulky barva, název a typ filamentu, aktivní špulka je zvýrazněná. Víc AMS se vedle sebe vejde podle šířky karty, na telefonu jsou pod sebou. Ke každému AMS můžeš zvolit **vlastní senzor vlhkosti a teploty** – hodí se hlavně u AMS Lite, které vlastní senzory nemá, třeba se senzorem ze sušičky.
+
+**Spool** – externí špulka (funguje i u tiskáren bez AMS) nebo jeden slot AMS. Vzhled normální, slim, ležící špulka nebo panel. Může se zobrazit jen ve chvíli, kdy se z ní tiskne. Nad nebo pod kartou AMS s ní lícuje.
+
+Procenta zbývajícího filamentu zná tiskárna jen u špulek Bambu s RFID, u ostatních je karta ve výchozím stavu skrývá.
+
+**Instalace:** klikni na tlačítko nahoře, stáhni kartu a obnov prohlížeč (Ctrl+F5). Nebo Nastavení → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`. Volby v YAML jsou v [anglické části](#printer-card).
 
 ## License
 
