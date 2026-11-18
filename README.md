@@ -10,9 +10,11 @@ Three minimalist Home Assistant dashboard cards for Bambu Lab 3D printers, built
 
 - **Printer** – camera, print progress, temperatures and errors at a glance
 - **AMS** – the spools in one or more AMS units, styled like Bambu Studio
-- **Spool** – the external spool (or a single AMS tray) in one of four looks
+- **Spool** – the external spool (or a single AMS tray) in one of three looks
 
 You'll find them in the card picker as **CzechTropi · Bambu Lab Printer / AMS / Spool**. Every option is in the visual editor, in English or Czech depending on your Home Assistant language.
+
+**No printer at hand?** Every card has a **MOCK** data source with made-up data – see [Try it with mock data](#try-it-with-mock-data).
 
 ## Printer card
 
@@ -47,6 +49,10 @@ Shows one or more AMS units in the order you pick them. Each spool shows its col
 
 <img src="images/ams-two.png" width="460" alt="Two AMS units">
 
+**AMS 3H (H3C)** is drawn as wide as a 4-spool AMS: the main zone in rows of four and the dry box in its own frame, each zone with its humidity and temperature. While an AMS dries, an orange chip shows the time left – for the AMS 3H dry box, AMS 2 Pro and AMS HT. An **AMS HT** (one spool) shows its spool with the chips next to it, so it lines up with the other AMS.
+
+<img src="images/ams-3h.png" width="620" alt="AMS 3H with the dry box, AMS 2 Pro while drying">
+
 The AMS Lite has no humidity or temperature sensor, so you can pick **your own sensors** – e.g. from a filament dryer. It works for any AMS: your sensor replaces the built-in reading.
 
 <img src="images/custom-sensors.png" width="460" alt="AMS Lite with the humidity and temperature of a dryer">
@@ -65,15 +71,43 @@ Shows the external spool – so it also works for printers without an AMS – or
 
 ![External spool above the AMS card](images/filaments.png)
 
-<img src="images/spool-looks.png" width="520" alt="Spool card looks: normal, slim, lying spool and panel">
+<img src="images/spool-looks.png" width="520" alt="Spool card looks: normal, slim and panel">
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `spool` | – | **Required.** The external spool, or an AMS together with `tray` |
-| `external_style` | `normal` | `normal`, `slim`, `ribbon` (lying spool) or `panel` |
+| `external_style` | `normal` | `normal`, `slim` or `panel` |
 | `show_external` | `always` | `always`, or `active` – the card shows only while the printer prints from this spool |
 
 **Both filament cards** also have `title`, `show_name`, `show_type`, `highlight_active` and `color_active`, and `show_remaining`. The remaining percentage is only known for Bambu spools with RFID – the printer reports 100 % for anything else, so by default it's hidden there.
+
+## Try it with mock data
+
+At the top of each card editor, switch **Data Source** to **Mock data (MOCK)**. The device picker is replaced by a choice of made-up data, so you can see the cards without the hardware – e.g. an AMS 3H you don't own. Nothing is read from or sent to the printer; the card title says MOCK.
+
+<img src="images/mock-printer.png" width="300" alt="Printer card with mock data and the mock camera">
+
+- **Printer** – state: printing, paused, preparing, finished, ready or error (HMS). Comes with a drawn camera view; the light and power buttons work inside the card only.
+- **AMS** – any mix of AMS 3H with the dry box, AMS 2 Pro (drying), AMS HT (drying), AMS and AMS Lite
+- **Spool** – the external spool, the external spool in use, or an AMS tray with multi-color filament
+
+```yaml
+type: custom:bambulab-card
+printer: MOCK
+mock: printing        # pause, prepare, finish, idle, error
+```
+
+```yaml
+type: custom:bambulab-ams-card
+ams: MOCK
+mock: [ams_3h, ams_2_pro, ams_ht, ams, ams_lite]
+```
+
+```yaml
+type: custom:bambulab-spool-card
+spool: MOCK
+mock: external_active # external, ams_tray
+```
 
 ## Installation
 
@@ -103,7 +137,7 @@ custom_temperature: sensor.dryer_temperature
 ```yaml
 type: custom:bambulab-spool-card
 spool: <external spool device_id>
-external_style: ribbon
+external_style: slim
 show_external: active
 ```
 
@@ -115,7 +149,7 @@ Tři minimalistické karty do Home Assistantu pro 3D tiskárny Bambu Lab, postav
 
 - **Printer** – kamera, průběh tisku, teploty a chyby na první pohled
 - **AMS** – špulky v jednom nebo více AMS, ve stylu Bambu Studia
-- **Spool** – externí špulka (nebo jeden slot AMS) ve čtyřech podobách
+- **Spool** – externí špulka (nebo jeden slot AMS) ve třech podobách
 
 Ve výběru karet je najdeš jako **CzechTropi · Bambu Lab Printer / AMS / Spool**. Všechno se nastavuje ve vizuálním editoru, česky nebo anglicky podle jazyka Home Assistantu.
 
@@ -123,9 +157,11 @@ Ve výběru karet je najdeš jako **CzechTropi · Bambu Lab Printer / AMS / Spoo
 
 **Printer** – živá kamera (klepnutím přepneš na náhled tisku), aktuální fáze tisku, teplota trysky a podložky, průběh s počtem vrstev a časem dokončení, HMS chyby s odkazem na wiki Bambu, světlo a volitelně chytrá zásuvka s příkonem.
 
-**AMS** – jedno nebo více AMS v pořadí, v jakém je vybereš. U každé špulky barva, název a typ filamentu, aktivní špulka je zvýrazněná. Víc AMS je v běžném sloupci plochy pod sebou; když kartě dáš víc místa (třeba sekci přes dva sloupce), jsou vedle sebe. Ke každému AMS můžeš zvolit **vlastní senzor vlhkosti a teploty** – hodí se hlavně u AMS Lite, které vlastní senzory nemá, třeba se senzorem ze sušičky.
+**AMS** – jedno nebo více AMS v pořadí, v jakém je vybereš. U každé špulky barva, název a typ filamentu, aktivní špulka je zvýrazněná. Víc AMS je v běžném sloupci plochy pod sebou; když kartě dáš víc místa (třeba sekci přes dva sloupce), jsou vedle sebe. Ke každému AMS můžeš zvolit **vlastní senzor vlhkosti a teploty** – hodí se hlavně u AMS Lite, které vlastní senzory nemá, třeba se senzorem ze sušičky. **AMS 3H (H3C)** má hlavní zónu v řadách po čtyřech a pod ní sušicí box, každý se svou vlhkostí a teplotou. Při sušení (AMS 3H, AMS 2 Pro, AMS HT) ukáže oranžový čip zbývající čas.
 
-**Spool** – externí špulka (funguje i u tiskáren bez AMS) nebo jeden slot AMS. Vzhled normální, slim, ležící špulka nebo panel. Může se zobrazit jen ve chvíli, kdy se z ní tiskne. Nad nebo pod kartou AMS s ní lícuje.
+**Spool** – externí špulka (funguje i u tiskáren bez AMS) nebo jeden slot AMS. Vzhled normální, slim nebo panel. Může se zobrazit jen ve chvíli, kdy se z ní tiskne. Nad nebo pod kartou AMS s ní lícuje.
+
+**Ukázková data (MOCK):** v editoru každé karty přepni nahoře **Zdroj dat** na **Ukázková data (MOCK)** a vyber, co chceš vidět – stav tiskárny (i s nakreslenou kamerou), libovolná AMS včetně AMS 3H nebo externí špulku. Z tiskárny se nic nečte ani se do ní nic neposílá.
 
 Procenta zbývajícího filamentu zná tiskárna jen u špulek Bambu s RFID, u ostatních je karta ve výchozím stavu skrývá.
 
