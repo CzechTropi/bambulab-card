@@ -17,8 +17,8 @@ const BBL_I18N = {
     warn: 'Vyber v editoru karty tiskárnu (zařízení z integrace Bambu Lab).',
     e_printer: 'Tiskárna', e_power_switch: 'Vypínač napájení', e_camera: 'Vlastní kamera', e_name: 'Název tiskárny',
     e_icons: 'Ikony', e_colors: 'Barvy',
-    e_icon_light: 'Ikona světla', e_icon_power: 'Ikona napájení', e_icon_nozzle: 'Ikona hotendu', e_icon_bed: 'Ikona podložky', e_icon_usage: 'Ikona příkonu',
-    e_color_light: 'Barva světla (zapnuto)', e_color_power: 'Barva napájení (zapnuto)', e_color_nozzle: 'Barva hotendu', e_color_bed: 'Barva podložky', e_color_progress: 'Barva progresu',
+    e_icon_light: 'Ikona světla', e_icon_power: 'Ikona napájení', e_icon_nozzle: 'Ikona hotendu', e_icon_bed: 'Ikona podložky', e_icon_chamber: 'Ikona komory', e_icon_usage: 'Ikona příkonu',
+    e_color_light: 'Barva světla (zapnuto)', e_color_power: 'Barva napájení (zapnuto)', e_color_nozzle: 'Barva hotendu', e_color_bed: 'Barva podložky', e_color_chamber: 'Barva komory', e_color_progress: 'Barva progresu',
     h_camera: 'Prázdné = kamera tiskárny', h_name: 'Prázdné = název zařízení', h_power_switch: 'Chytrá zásuvka tiskárny. Příkon se načte ze stejného zařízení',
     desc: 'Minimalistická karta pro Bambu Lab tiskárnu: kamera, náhled, teploty, progres',
   },
@@ -31,8 +31,8 @@ const BBL_I18N = {
     warn: 'Pick a printer (a Bambu Lab device) in the card editor.',
     e_printer: 'Printer', e_power_switch: 'Power switch', e_camera: 'Custom camera', e_name: 'Printer name',
     e_icons: 'Icons', e_colors: 'Colors',
-    e_icon_light: 'Light icon', e_icon_power: 'Power icon', e_icon_nozzle: 'Hotend icon', e_icon_bed: 'Bed icon', e_icon_usage: 'Power usage icon',
-    e_color_light: 'Light color (on)', e_color_power: 'Power color (on)', e_color_nozzle: 'Hotend color', e_color_bed: 'Bed color', e_color_progress: 'Progress color',
+    e_icon_light: 'Light icon', e_icon_power: 'Power icon', e_icon_nozzle: 'Hotend icon', e_icon_bed: 'Bed icon', e_icon_chamber: 'Chamber icon', e_icon_usage: 'Power usage icon',
+    e_color_light: 'Light color (on)', e_color_power: 'Power color (on)', e_color_nozzle: 'Hotend color', e_color_bed: 'Bed color', e_color_chamber: 'Chamber color', e_color_progress: 'Progress color',
     h_camera: 'Empty = printer camera', h_name: 'Empty = device name', h_power_switch: 'Smart plug of the printer. Power usage is read from the same device',
     desc: 'Minimalist Bambu Lab printer card: camera, preview, temperatures, progress',
   },
@@ -107,6 +107,8 @@ const BBL_ROLES = {
   nozzleT: 'sensor:target_nozzle_temp',
   bed: 'sensor:bed_temp',
   bedT: 'sensor:target_bed_temp',
+  chamber: 'sensor:chamber_temp',
+  chamberT: 'sensor:target_chamber_temp',
   remaining: 'sensor:remaining_time',
   start: 'sensor:start_time',
   end: 'sensor:end_time',
@@ -131,6 +133,7 @@ const BBL_ICONS = {
   nozzle: 'M7,2H17V8H19V13H16.5L13,17H11L7.5,13H5V8H7V2M10,22H2V20H10A1,1 0 0,0 11,19V18H13V19A3,3 0 0,1 10,22Z',
   bed: 'M7.95,3L6.53,5.19L7.95,7.4H7.94L5.95,10.5L4.22,9.6L5.64,7.39L4.22,5.19L6.22,2.09L7.95,3M13.95,2.89L12.53,5.1L13.95,7.3L13.94,7.31L11.95,10.4L10.22,9.5L11.64,7.3L10.22,5.1L12.22,2L13.95,2.89M20,2.89L18.56,5.1L20,7.3V7.31L18,10.4L16.25,9.5L17.67,7.3L16.25,5.1L18.25,2L20,2.89M2,22V14A2,2 0 0,1 4,12H20A2,2 0 0,1 22,14V22H20V20H4V22H2M6,14A1,1 0 0,0 5,15V17A1,1 0 0,0 6,18A1,1 0 0,0 7,17V15A1,1 0 0,0 6,14M10,14A1,1 0 0,0 9,15V17A1,1 0 0,0 10,18A1,1 0 0,0 11,17V15A1,1 0 0,0 10,14M14,14A1,1 0 0,0 13,15V17A1,1 0 0,0 14,18A1,1 0 0,0 15,17V15A1,1 0 0,0 14,14M18,14A1,1 0 0,0 17,15V17A1,1 0 0,0 18,18A1,1 0 0,0 19,17V15A1,1 0 0,0 18,14Z',
   bolt: 'M11,15H6L13,1V9H18L11,23V15Z',
+  chamber: 'M15 13V5A3 3 0 0 0 9 5V13A5 5 0 1 0 15 13M12 4A1 1 0 0 1 13 5V8H11V5A1 1 0 0 1 12 4Z',
   alert: 'M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
   printer: 'M19,6A1,1 0 0,0 20,5A1,1 0 0,0 19,4A1,1 0 0,0 18,5A1,1 0 0,0 19,6M19,2A3,3 0 0,1 22,5V11H18V7H6V11H2V5A3,3 0 0,1 5,2H19M18,18.25C18,18.63 17.79,18.96 17.47,19.13L12.57,21.82C12.4,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L6.53,19.13C6.21,18.96 6,18.63 6,18.25V13C6,12.62 6.21,12.29 6.53,12.12L11.43,9.68C11.59,9.56 11.79,9.5 12,9.5C12.21,9.5 12.4,9.56 12.57,9.68L17.47,12.12C17.79,12.29 18,12.62 18,13V18.25M12,11.65L9.04,13L12,14.6L14.96,13L12,11.65M8,17.66L11,19.29V16.33L8,14.71V17.66M16,17.66V14.71L13,16.33V19.29L16,17.66Z',
 };
@@ -243,6 +246,7 @@ function bblMockHass(hass, scenario, st) {
   const c = { unit_of_measurement: '°C' };
   add('status', m[0]); add('stage', m[1]); add('progress', m[2], { unit_of_measurement: '%' });
   add('nozzle', m[3], c); add('nozzleT', m[4], c); add('bed', m[5], c); add('bedT', m[6], c);
+  add('chamber', { printing: 38, pause: 37, prepare: 29, finish: 34, idle: 26, error: 38 }[scenario] || 38, c);
   add('remaining', m[7], { unit_of_measurement: 'h' });
   add('start', new Date(now - 70 * 60000).toISOString()); add('end', new Date(now + m[7] * 3600000).toISOString());
   add('task', T.m_task || 'Raspberry Pi case'); add('layer', m[8]); add('layers', 210);
@@ -312,7 +316,7 @@ class BambuLabCard extends HTMLElement {
     const T = bblT(this._hass); this._lang = bblLang(this._hass);
     const c = this._cfg;
     [['--bbl-light', c.color_light, '#FFC107'], ['--bbl-power', c.color_power, '#7CB342'], ['--bbl-noz', c.color_nozzle, '#E9A23B'],
-      ['--bbl-bed', c.color_bed, '#E07250'], ['--bbl-prog', c.color_progress, '#378ADD']]
+      ['--bbl-bed', c.color_bed, '#E07250'], ['--bbl-cham', c.color_chamber, '#4FB3A9'], ['--bbl-prog', c.color_progress, '#378ADD']]
       .forEach(([k, v, d]) => this.style.setProperty(k, bblColor(v, d)));
     const root = this.shadowRoot || this.attachShadow({ mode: 'open' });
     root.innerHTML = `
@@ -348,6 +352,7 @@ class BambuLabCard extends HTMLElement {
                 border: 1px solid; line-height: 1.4; }
         .chip svg { flex-shrink: 0; }
         .c-noz { background: color-mix(in srgb, var(--bbl-noz) 12%, transparent); border-color: color-mix(in srgb, var(--bbl-noz) 45%, transparent); color: var(--bbl-noz); }
+        .c-cham { background: color-mix(in srgb, var(--bbl-cham) 12%, transparent); border-color: color-mix(in srgb, var(--bbl-cham) 45%, transparent); color: var(--bbl-cham); }
         .c-bed { background: color-mix(in srgb, var(--bbl-bed) 12%, transparent); border-color: color-mix(in srgb, var(--bbl-bed) 45%, transparent); color: var(--bbl-bed); }
         .c-fil { background: rgba(55,138,221,.12); border-color: rgba(55,138,221,.45); color: #5BA3EA; }
         .c-pow { background: rgba(128,128,128,.1); border-color: rgba(128,128,128,.3); color: var(--secondary-text-color); }
@@ -547,6 +552,9 @@ class BambuLabCard extends HTMLElement {
     if (configured && !dead) {
       chips.push(`<span class="chip c-noz">${this._icon('icon_nozzle', 'nozzle', 14)}${t(noz, nozT)}</span>`);
       chips.push(`<span class="chip c-bed">${this._icon('icon_bed', 'bed', 14)}${t(bed, bedT)}</span>`);
+      // enclosed printers with a chamber sensor (X1, H2D…): the integration only creates it there
+      const cham = this._num(e.chamber), chamT = this._num(e.chamberT);
+      if (cham != null) chips.push(`<span class="chip c-cham">${this._icon('icon_chamber', 'chamber', 14)}${t(cham, chamT)}</span>`);
     }
     const w = this._num(e.power_sensor);
     if (w != null && powerOn !== 'off') chips.push(`<span class="chip c-pow">${this._icon('icon_usage', 'bolt', 14)}${Math.round(w)} W</span>`);
@@ -599,6 +607,7 @@ const BBL_SCHEMA_REST = [
       { name: 'icon_power', selector: { icon: { placeholder: 'mdi:power' } } },
       { name: 'icon_nozzle', selector: { icon: { placeholder: 'mdi:printer-3d-nozzle' } } },
       { name: 'icon_bed', selector: { icon: { placeholder: 'mdi:radiator' } } },
+      { name: 'icon_chamber', selector: { icon: { placeholder: 'mdi:thermometer' } } },
       { name: 'icon_usage', selector: { icon: { placeholder: 'mdi:flash' } } },
     ] },
   ] },
@@ -608,6 +617,7 @@ const BBL_SCHEMA_REST = [
       { name: 'color_power', selector: { ui_color: {} } },
       { name: 'color_nozzle', selector: { ui_color: {} } },
       { name: 'color_bed', selector: { ui_color: {} } },
+      { name: 'color_chamber', selector: { ui_color: {} } },
       { name: 'color_progress', selector: { ui_color: {} } },
     ] },
   ] },

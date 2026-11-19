@@ -1,105 +1,155 @@
 # Bambu Lab Cards
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
-
 [![Open in your Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CzechTropi&repository=bambulab-card&category=plugin)
 
 **English** · [Česky](#česky)
 
-Three minimalist Home Assistant dashboard cards for Bambu Lab 3D printers, built on the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration:
+Minimalist Home Assistant dashboard cards for Bambu Lab 3D printers, built on the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration.
 
-- **Printer** – camera, print progress, temperatures and errors at a glance
-- **AMS** – the spools in one or more AMS units, styled like Bambu Studio
-- **Spool** – the external spool (or a single AMS tray) in the same look as the AMS
+![Printer, external spool and AMS cards](images/hero.png)
 
-You'll find them in the card picker as **CzechTropi · Bambu Lab Printer / AMS / Spool**. Every option is in the visual editor, in English or Czech depending on your Home Assistant language.
+| Card | What it shows |
+| --- | --- |
+| [**Printer**](#printer-card) | Camera, print progress, temperatures and errors |
+| [**AMS**](#ams-card) | The spools in one or more AMS units, styled like Bambu Studio |
+| [**Spool**](#spool-card) | The external spool or a single AMS tray |
 
-**No printer at hand?** Every card has a **MOCK** data source with made-up data – see [Try it with mock data](#try-it-with-mock-data).
+In the card picker they are **CzechTropi · Bambu Lab Printer / AMS / Spool**. Everything is set up in the visual editor, in English or Czech by your Home Assistant language. No printer at hand? Every card has [mock data](#mock-data) – all the screenshots here are made with it.
+
+## Installation
+
+Click the **Open in your Home Assistant** button above, download the card and reload the browser (Ctrl+F5). Or add it by hand:
+
+- **Home Assistant 2026.11+:** Settings → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`
+- **Older versions (HACS):** HACS → ⋮ → **Custom repositories** → the same URL, type **Dashboard**
+
+Needs Home Assistant 2024.8+ and the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration. The cards find the printer's entities by themselves, renamed entities included. If something is missing (layers, start / end time), enable that entity in the device settings.
 
 ## Printer card
 
 ![Printing, paused with an error, finished and powered off](images/overview.png)
 
-- Live camera, one tap switches to the print preview (cover image)
-- Status line with the current stage – bed leveling, heating, filament change, pause reason…
-- Nozzle and bed temperature (current / target)
-- Progress bar, layers, remaining time, start and estimated finish
+- Live camera – one tap switches to the print preview
+- Status with the current stage: bed leveling, heating, filament change, pause reason…
+- Nozzle and bed temperature – and the chamber on printers that have its sensor (X1, H2D…)
+- Progress, layers, time left and estimated finish
 - HMS and print errors with a link to the Bambu wiki
-- Chamber light toggle and an optional smart plug with live wattage
-- Knows when the printer is off even without a smart plug – no stale temperatures then
+- Chamber light and an optional smart plug with live wattage
+- A printer that is off shows no stale temperatures, with or without a smart plug
 
 <table>
   <tr>
-    <td align="center"><img src="images/preview.png" width="260"><br><sub>Print preview</sub></td>
-    <td align="center"><img src="images/preparing.png" width="260"><br><sub>Stage while preparing the print</sub></td>
-    <td align="center"><img src="images/editor.png" width="260"><br><sub>Visual editor</sub></td>
+    <td align="center"><img src="images/preview.png" width="300"><br><sub>One tap on the camera button shows the print preview</sub></td>
+    <td align="center"><img src="images/preparing.png" width="300"><br><sub>The current stage while preparing the print</sub></td>
   </tr>
 </table>
 
-| Option | Description |
-| --- | --- |
-| `printer` | **Required.** The printer device |
-| `power_switch` | Smart plug powering the printer – wattage is read from the same device |
-| `camera` | Camera entity, default: the printer camera |
-| `name` | Card title, default: the device name |
-| `icon_*`, `color_*` | Own icons and colors for light, power, nozzle, bed, usage and progress |
-
 ## AMS card
 
-Shows one or more AMS units in the order you pick them, styled like Bambu Studio: color, filament name, type and the remaining filament of every spool, plus the humidity and temperature of each AMS. The spool the printer uses is highlighted. Tap a spool to open the same filament dialog as the ha-bambulab cards (filament type and color, load, unload, re-read RFID).
+One or more AMS units in the order you pick them.
 
-Every AMS gets the same width, so a spool is the same size in all of them. In a normal dashboard column the AMS are stacked; give the card more width (e.g. a section spanning two columns) and they sit side by side.
+- Color, name, type and remaining filament of every spool; the spool in use is highlighted
+- Humidity and temperature of every AMS – or **your own sensors**, e.g. from a filament dryer (handy for the AMS Lite, which has none)
+- **AMS 3H (H3C):** the main zone and the dry box, each with its own humidity and temperature
+- **Drying** (AMS 3H, AMS 2 Pro, AMS HT): a flame chip with the time left and an orange frame
+- Tap a spool for the same filament dialog as the ha-bambulab cards (type, color, load, unload, RFID)
+- Every AMS has the same width: stacked in a normal column, side by side in a wider section
 
-**AMS 3H (H3C)** shows the main zone in rows of four and the dry box in its own frame, each with its humidity and temperature. While an AMS dries – the AMS 3H dry box, AMS 2 Pro or AMS HT – an orange chip with a flame shows the time left and the unit gets an orange frame.
+<img src="images/ams-3h.png" width="460" alt="AMS 3H with the dry box while drying">
 
-<img src="images/ams-3h.png" width="720" alt="AMS 3H with the dry box, AMS 2 Pro while drying">
+**Style** – drawn spools or rings (the ring shows the remaining filament):
 
-**Two styles** – drawn spools (`spool`) or rings (`rings`, the ring around a spool is the remaining filament) – and **two sizes**. **Compact** keeps everything (name, type, remaining) but puts a spool in a small tile, four in a row: an AMS takes a single row, handy for several AMS on one printer. An **AMS HT** (one spool) has the same header as the other units, with the spool and its details below.
+![Spool and rings style](images/ams-styles.png)
 
-<img src="images/ams-rings.png" width="460" alt="Rings style: AMS and AMS HT while drying">
+**Size** – compact keeps everything but puts each spool in a small tile, four in a row, so an AMS takes a single row. Handy with several AMS on one printer:
 
-<img src="images/ams-compact.png" width="720" alt="Compact size: spool and rings">
-
-The AMS Lite has no humidity or temperature sensor, so you can pick **your own sensors** – e.g. from a filament dryer. It works for any AMS: your sensor replaces the built-in reading.
+![Compact size](images/ams-compact.png)
 
 <img src="images/custom-sensors.png" width="460" alt="AMS Lite with the humidity and temperature of a dryer">
+
+## Spool card
+
+The external spool – so it works for printers without an AMS too – or a single AMS tray, in the same look as the AMS card. It can show only while the printer prints from it.
+
+<img src="images/spool-looks.png" width="480" alt="Spool card: normal, rings and compact">
+
+## Mock data
+
+At the top of each card editor, switch **Data Source** to **Mock data (MOCK)** and pick what to see: a printer state (with a drawn camera), any mix of AMS models including the AMS 3H, or the external spool. Nothing is read from or sent to the printer, so you can try a look – or an AMS you don't own – before setting up the real card. Every screenshot in this README is made from these mock data.
+
+## Options
+
+Everything is in the visual editor; the YAML options are here for reference.
+
+<details>
+<summary><b>Printer card</b></summary>
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `printer` | – | **Required.** The printer device |
+| `power_switch` | – | Smart plug of the printer – the wattage is read from the same device |
+| `camera` | printer camera | Camera entity |
+| `name` | device name | Card title |
+| `icon_*`, `color_*` | – | Own icons and colors: light, power, nozzle, bed, chamber, usage, progress |
+
+```yaml
+type: custom:bambulab-card
+printer: <device_id>
+power_switch: switch.printer_plug
+```
+</details>
+
+<details>
+<summary><b>AMS card</b></summary>
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `ams` | – | **Required.** AMS units, in display order |
 | `style` | `spool` | `spool` or `rings` |
 | `size` | `normal` | `normal` or `compact` |
-| `custom_humidity`, `custom_temperature` | – | Own sensors (in the editor for each AMS; YAML with several AMS: `custom_sensors`) |
+| `custom_humidity`, `custom_temperature` | – | Own sensors (with several AMS: `custom_sensors`, set in the editor per AMS) |
 | `show_labels` | on | AMS names |
 
-## Spool card
+```yaml
+type: custom:bambulab-ams-card
+ams:
+  - <AMS device_id>
+style: rings
+size: compact
+custom_humidity: sensor.dryer_humidity
+custom_temperature: sensor.dryer_temperature
+```
+</details>
 
-Shows the external spool – so it also works for printers without an AMS – or a single AMS tray, in the same look as the AMS card. Placed above or below the AMS card, it lines up with it. **Normal** shows the spool with its name, type and remaining next to it; **compact** is one slim line.
-
-<img src="images/filaments.png" width="460" alt="External spool above the AMS card">
-
-<img src="images/spool-looks.png" width="520" alt="Spool card: normal, rings and compact">
+<details>
+<summary><b>Spool card</b></summary>
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `spool` | – | **Required.** The external spool, or an AMS together with `tray` |
 | `style` | `spool` | `spool` or `rings` |
 | `size` | `normal` | `normal` or `compact` (one slim line) |
-| `show_external` | `always` | `always`, or `active` – the card shows only while the printer prints from this spool |
+| `show_external` | `always` | `always`, or `active` – shown only while the printer prints from this spool |
 
-**Both filament cards** also have `title`, `show_name`, `show_type`, `highlight_active`, `color_active` and `show_remaining`. The remaining percentage is only known for Bambu spools with RFID – the printer reports 100 % for anything else, so by default it's hidden there.
+```yaml
+type: custom:bambulab-spool-card
+spool: <external spool device_id>
+size: compact
+show_external: active
+```
+</details>
+
+<details>
+<summary><b>Both filament cards</b></summary>
+
+`title`, `show_name`, `show_type`, `highlight_active`, `color_active` and `show_remaining`. The remaining percentage is only known for Bambu spools with RFID – the printer reports 100 % for anything else, so by default it is hidden there.
 
 Older configs keep working: `style: compact` shows rings, `external_style: slim` is the compact spool card and `panel` the normal one.
+</details>
 
-## Try it with mock data
-
-At the top of each card editor, switch **Data Source** to **Mock data (MOCK)**. The device picker is replaced by a choice of made-up data, so you can see the cards without the hardware – e.g. an AMS 3H you don't own. Nothing is read from or sent to the printer; the card title says MOCK.
-
-<img src="images/mock-printer.png" width="300" alt="Printer card with mock data and the mock camera">
-
-- **Printer** – state: printing, paused, preparing, finished, ready or error (HMS). Comes with a drawn camera view; the light and power buttons work inside the card only.
-- **AMS** – any mix of AMS 3H with the dry box, AMS 2 Pro (drying), AMS HT (drying), AMS and AMS Lite
-- **Spool** – the external spool, the external spool in use, or an AMS tray with multi-color filament
+<details>
+<summary><b>Mock data</b></summary>
 
 ```yaml
 type: custom:bambulab-card
@@ -118,66 +168,57 @@ type: custom:bambulab-spool-card
 spool: MOCK
 mock: external_active # external, ams_tray
 ```
-
-## Installation
-
-Click the button at the top, download the card and reload the browser (Ctrl+F5). Or add it by hand:
-
-- **Home Assistant 2026.11+:** Settings → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`
-- **Older versions (HACS):** HACS → ⋮ → **Custom repositories** → the same URL, type **Dashboard**
-
-Needs Home Assistant 2024.8+ and the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration. The cards find the printer's entities by themselves, so renamed entities are fine. If something is missing (layers, start / end time), enable that entity in the device settings.
-
-## YAML example
-
-```yaml
-type: custom:bambulab-card
-printer: <device_id>
-power_switch: switch.printer_plug
-```
-
-```yaml
-type: custom:bambulab-ams-card
-ams:
-  - <AMS device_id>
-style: rings
-size: compact
-custom_humidity: sensor.dryer_humidity
-custom_temperature: sensor.dryer_temperature
-```
-
-```yaml
-type: custom:bambulab-spool-card
-spool: <external spool device_id>
-size: compact
-show_external: active
-```
+</details>
 
 ---
 
 ## Česky
 
-Tři minimalistické karty do Home Assistantu pro 3D tiskárny Bambu Lab, postavené na integraci [ha-bambulab](https://github.com/greghesp/ha-bambulab):
+Minimalistické karty do Home Assistantu pro 3D tiskárny Bambu Lab, postavené na integraci [ha-bambulab](https://github.com/greghesp/ha-bambulab).
 
-- **Printer** – kamera, průběh tisku, teploty a chyby na první pohled
-- **AMS** – špulky v jednom nebo více AMS, ve stylu Bambu Studia
-- **Spool** – externí špulka (nebo jeden slot AMS) ve stejném vzhledu jako AMS
+| Karta | Co ukazuje |
+| --- | --- |
+| **Printer** | Kamera, průběh tisku, teploty a chyby |
+| **AMS** | Špulky v jednom nebo více AMS, ve stylu Bambu Studia |
+| **Spool** | Externí špulka nebo jeden slot AMS |
 
-Ve výběru karet je najdeš jako **CzechTropi · Bambu Lab Printer / AMS / Spool**. Všechno se nastavuje ve vizuálním editoru, česky nebo anglicky podle jazyka Home Assistantu.
+Ve výběru karet jsou jako **CzechTropi · Bambu Lab Printer / AMS / Spool**. Všechno se nastavuje ve vizuálním editoru, česky nebo anglicky podle jazyka Home Assistantu.
 
-<img src="images/czech.png" width="300" alt="Karta tiskárny v češtině">
+<img src="images/czech.png" width="300" alt="Karta tiskárny v češtině (ukázková data)">
 
-**Printer** – živá kamera (klepnutím přepneš na náhled tisku), aktuální fáze tisku, teplota trysky a podložky, průběh s počtem vrstev a časem dokončení, HMS chyby s odkazem na wiki Bambu, světlo a volitelně chytrá zásuvka s příkonem. Vypnutou tiskárnu pozná i bez chytré zásuvky – staré teploty pak neukazuje.
+**Instalace** – klikni na tlačítko **Open in your Home Assistant** nahoře, stáhni kartu a obnov prohlížeč (Ctrl+F5). Nebo Nastavení → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`.
 
-**AMS** – jedno nebo více AMS v pořadí, v jakém je vybereš. U každé špulky barva, název, typ a zbývající filament, aktivní špulka je zvýrazněná. Klepnutím na špulku otevřeš stejný dialog filamentu jako v kartách ha-bambulab (typ a barva filamentu, zavést, vysunout, znovu načíst RFID). Každé AMS má stejnou šířku, takže jsou špulky všude stejně velké; v běžném sloupci plochy jsou AMS pod sebou, v širší sekci vedle sebe. **Dva styly** – kreslené špulky nebo kolečka (prstenec kolem kolečka je zbývající filament) – a **dvě velikosti**: kompaktní ukáže všechno, jen každou špulku jako malou dlaždici, čtyři na řádek, takže jedno AMS zabere jediný řádek. **AMS 3H (H3C)** má hlavní zónu v řadách po čtyřech a pod ní sušicí box, každý se svou vlhkostí a teplotou. Při sušení (AMS 3H, AMS 2 Pro, AMS HT) ukáže oranžový čip s ohýnkem zbývající čas a AMS dostane oranžový rámeček. Ke každému AMS můžeš zvolit **vlastní senzor vlhkosti a teploty** – hodí se hlavně u AMS Lite, které vlastní senzory nemá.
+### Printer
 
-**Spool** – externí špulka (funguje i u tiskáren bez AMS) nebo jeden slot AMS, ve stejném vzhledu jako karta AMS. Normální velikost ukáže špulku a vedle ní název, typ a zbytek, kompaktní je jeden úzký řádek. Může se zobrazit jen ve chvíli, kdy se z ní tiskne. Nad nebo pod kartou AMS s ní lícuje.
+- Živá kamera, klepnutím přepneš na náhled tisku
+- Aktuální fáze tisku: vyrovnávání podložky, ohřev, výměna filamentu, důvod pozastavení…
+- Teplota trysky a podložky – a komory u tiskáren, které mají její senzor (X1, H2D…)
+- Průběh, vrstvy, zbývající čas a odhad dokončení
+- HMS chyby s odkazem na wiki Bambu
+- Světlo a volitelně chytrá zásuvka s příkonem
+- Vypnutá tiskárna neukazuje staré teploty, i bez chytré zásuvky
 
-**Ukázková data (MOCK):** v editoru každé karty přepni nahoře **Zdroj dat** na **Ukázková data (MOCK)** a vyber, co chceš vidět – stav tiskárny (i s nakreslenou kamerou), libovolná AMS včetně AMS 3H nebo externí špulku. Z tiskárny se nic nečte ani se do ní nic neposílá.
+### AMS
 
-Procenta zbývajícího filamentu zná tiskárna jen u špulek Bambu s RFID, u ostatních je karta ve výchozím stavu skrývá.
+- Barva, název, typ a zbývající filament každé špulky, aktivní špulka je zvýrazněná
+- Vlhkost a teplota každého AMS – nebo **vlastní senzory**, třeba ze sušičky (hodí se u AMS Lite, které je nemá)
+- **AMS 3H (H3C):** hlavní zóna a sušicí box, každý se svou vlhkostí a teplotou
+- **Sušení** (AMS 3H, AMS 2 Pro, AMS HT): čip s ohýnkem a zbývajícím časem, oranžový rámeček
+- Klepnutím na špulku otevřeš stejný dialog filamentu jako v kartách ha-bambulab (typ, barva, zavést, vysunout, RFID)
+- **Styl:** kreslené špulky, nebo kolečka (prstenec ukazuje zbývající filament)
+- **Velikost:** kompaktní ukáže všechno, jen každou špulku jako malou dlaždici – jedno AMS zabere jediný řádek
 
-**Instalace:** klikni na tlačítko nahoře, stáhni kartu a obnov prohlížeč (Ctrl+F5). Nebo Nastavení → **Marketplace** → **Add from link** → `https://github.com/CzechTropi/bambulab-card`. Volby v YAML jsou v [anglické části](#printer-card).
+### Spool
+
+- Externí špulka (funguje i u tiskáren bez AMS) nebo jeden slot AMS, ve stejném vzhledu jako karta AMS
+- Kompaktní velikost je jeden úzký řádek
+- Může se ukázat jen ve chvíli, kdy se z ní tiskne
+
+### Ukázková data (MOCK)
+
+V editoru každé karty přepni nahoře **Zdroj dat** na **Ukázková data (MOCK)** a vyber, co chceš vidět – stav tiskárny, libovolná AMS včetně AMS 3H nebo externí špulku. Z tiskárny se nic nečte ani se do ní nic neposílá. Z těchto dat jsou i všechny obrázky v tomto README.
+
+Procenta zbývajícího filamentu zná tiskárna jen u špulek Bambu s RFID, u ostatních je karta ve výchozím stavu skrývá. Volby v YAML jsou v [anglické části](#options).
 
 ## License
 
