@@ -120,6 +120,7 @@ const BBL_ROLES = {
   camera: 'camera:camera',
   hms: 'binary_sensor:hms_errors',
   perr: 'binary_sensor:print_error',
+  online: 'binary_sensor:online',
 };
 
 const BBL_ICONS = {
@@ -321,6 +322,7 @@ class BambuLabCard extends HTMLElement {
         .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; transition: background .3s; }
         .dot.live { animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+              @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
         .title { flex: 1; min-width: 0; }
         .name { font-size: 15px; font-weight: 500; line-height: 1.2; }
         .status { font-size: 12px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -455,6 +457,9 @@ class BambuLabCard extends HTMLElement {
     const powerOn = this._st(e.power_switch);
     let s = this._st(e.status) || 'unknown';
     if (powerOn === 'off') s = 'unavailable';
+    // no smart plug: the integration reports `offline` (and Online = off), but the temperatures keep their last values
+    else if (s === 'offline' || this._st(e.online) === 'off') s = 'offline';
+    const dead = ['unavailable', 'offline'].includes(s);
     const T = bblT(this._hass); const cs = this._lang === 'cs';
     const sObj = hs[e.status];
     const label = T[s] || ((sObj && this._hass.formatEntityState) ? this._hass.formatEntityState(sObj) : s);
@@ -465,7 +470,7 @@ class BambuLabCard extends HTMLElement {
     const stageObj = hs[e.stage];
     const stage = stageObj ? stageObj.state : undefined;
     let stageTxt = null;
-    if (stage && !['idle', 'unknown', 'unavailable', 'printing'].includes(stage) && powerOn !== 'off') {
+    if (stage && !['idle', 'unknown', 'unavailable', 'offline', 'printing'].includes(stage) && !dead) {
       stageTxt = (cs && BBL_STAGE[stage]) || (this._hass.formatEntityState ? this._hass.formatEntityState(stageObj) : stage.replace(/_/g, ' '));
       if (s === 'pause' && !cs) { stageTxt = stageTxt.replace(/^paused[\s:,-]*/i, ''); stageTxt = stageTxt.charAt(0).toLowerCase() + stageTxt.slice(1); }
     }
@@ -493,7 +498,7 @@ class BambuLabCard extends HTMLElement {
       const src = bblMockCam(this._cfg.mock);
       if (mc.getAttribute('src') !== src) mc.setAttribute('src', src);
       mc.classList.toggle('dark', this._st(e.light) !== 'on');
-      mc.classList.toggle('off', powerOn === 'off');
+      mc.classList.toggle('off', dead);
     }
     const prev = hs[e.preview];
     const showPrev = !!(this._showPreview && prev);
@@ -530,7 +535,7 @@ class BambuLabCard extends HTMLElement {
       const msg = a.error || a.description || (a.code ? `${T.err_print} ${a.code}` : T.err_print);
       if (!errs.length || a.error) errs.push(esc(msg));
     }
-    if (powerOn === 'off') errs.length = 0;
+    if (dead) errs.length = 0;
     const errHtml = errs.map((x) => `<div>${x}</div>`).join('');
     if (this._errHtml !== errHtml) { $('errmsgs').innerHTML = errHtml; this._errHtml = errHtml; }
     $('err').classList.toggle('hidden', !errs.length);
@@ -539,7 +544,7 @@ class BambuLabCard extends HTMLElement {
     const chips = [];
     const noz = this._num(e.nozzle), nozT = this._num(e.nozzleT), bed = this._num(e.bed), bedT = this._num(e.bedT);
     const t = (v, tg) => v == null ? '—' : (tg ? `${Math.round(v)}°/${Math.round(tg)}°` : `${Math.round(v)} °C`);
-    if (configured && powerOn !== 'off') {
+    if (configured && !dead) {
       chips.push(`<span class="chip c-noz">${this._icon('icon_nozzle', 'nozzle', 14)}${t(noz, nozT)}</span>`);
       chips.push(`<span class="chip c-bed">${this._icon('icon_bed', 'bed', 14)}${t(bed, bedT)}</span>`);
     }
@@ -655,8 +660,8 @@ Object.assign(BBL_I18N.cs, {
   f_warn_spool: 'Vyber v editoru karty špulku (externí nebo slot AMS).',
   f_warn_printer: 'Vyber v editoru karty tiskárnu (zařízení z integrace Bambu Lab).',
   f_warn_filament: 'Vyber v editoru karty AMS nebo externí špulku.',
-  f_desc_ams: 'Jedno nebo více AMS: barva, název a typ filamentu, vlhkost',
-  f_desc_spool: 'Jedna špulka – externí nebo slot AMS. Vzhled: špulka, slim, ležící špulka nebo panel',
+  f_desc_ams: 'Jedno nebo více AMS: barva, název a typ filamentu, vlhkost, sušení. Špulky nebo kolečka, i kompaktně',
+  f_desc_spool: 'Jedna špulka – externí nebo slot AMS, ve stejném vzhledu jako karta AMS nebo jako úzký řádek',
   f_desc_filament: 'Jedno nebo více AMS, volitelně s externí špulkou',
   e_ams: 'AMS', e_spool: 'Špulka', e_tray: 'Slot', e_entity: 'Vlastní senzor špulky', e_title: 'Nadpis',
   e_display: 'Zobrazení', e_slots: 'Vlastní názvy a senzory zbývajícího filamentu',
@@ -673,13 +678,14 @@ Object.assign(BBL_I18N.cs, {
   h_show_remaining: 'Automaticky = jen u špulek Bambu s RFID, kde tiskárna stav opravdu zná',
   h_remaining: 'Např. input_number s % nebo gramy',
   o_auto: 'Automaticky (jen Bambu RFID)', o_always: 'Vždy, když ho tiskárna hlásí', o_never: 'Nikdy',
-  o_spool: 'Špulka', o_compact: 'Kompaktní',
+  o_spool: 'Špulka',
   o_left: 'Vlevo', o_right: 'Vpravo', o_top: 'Nahoře', o_bottom: 'Dole',
   o_ext_always: 'Vždy', o_ext_active: 'Jen když se z ní tiskne',
-  o_xs_slim: 'Slim', o_xs_normal: 'Normální', o_xs_panel: 'Panel',
+  o_xs_slim: 'Slim', o_xs_normal: 'Normální',
   e_show_when: 'Kdy zobrazit', e_spool_style: 'Vzhled',
   e_custom_humidity: 'Vlastní senzor vlhkosti', e_custom_temperature: 'Vlastní senzor teploty',
   e_external_style: 'Styl externí špulky', h_show_external: 'Jen když se z ní tiskne = jinak se karta skryje',
+  o_rings: 'Kolečka', e_size: 'Velikost', o_sz_compact: 'Kompaktní', o_sz_normal: 'Normální',
 });
 Object.assign(BBL_I18N.en, {
   f_drybox: 'Dry box', f_empty: 'Empty', f_external: 'External', f_humidity: 'Humidity', f_temp: 'Temperature', f_active: 'Active',
@@ -687,8 +693,8 @@ Object.assign(BBL_I18N.en, {
   f_warn_spool: 'Pick a spool (external or an AMS tray) in the card editor.',
   f_warn_printer: 'Pick a printer (a Bambu Lab device) in the card editor.',
   f_warn_filament: 'Pick an AMS or the external spool in the card editor.',
-  f_desc_ams: 'One or more AMS: color, name and type of the filament, humidity',
-  f_desc_spool: 'One spool – the external spool or an AMS tray. Appearance: spool, slim, lying spool or panel',
+  f_desc_ams: 'One or more AMS: color, name and type of the filament, humidity, drying. Spools or rings, also compact',
+  f_desc_spool: 'One spool – the external spool or an AMS tray, in the AMS card\'s look or as one slim line',
   f_desc_filament: 'One or more AMS, optionally with the external spool',
   e_ams: 'AMS', e_spool: 'Spool', e_tray: 'Tray', e_entity: 'Custom spool sensor', e_title: 'Title',
   e_display: 'Display', e_slots: 'Custom names and remaining sensors',
@@ -705,13 +711,14 @@ Object.assign(BBL_I18N.en, {
   h_show_remaining: 'Automatic = only Bambu spools with RFID, where the printer really knows it',
   h_remaining: 'E.g. an input_number in % or grams',
   o_auto: 'Automatic (Bambu RFID only)', o_always: 'Whenever the printer reports it', o_never: 'Never',
-  o_spool: 'Spool', o_compact: 'Compact',
+  o_spool: 'Spool',
   o_left: 'Left', o_right: 'Right', o_top: 'Top', o_bottom: 'Bottom',
   o_ext_always: 'Always', o_ext_active: 'Only while in use',
-  o_xs_slim: 'Slim', o_xs_normal: 'Normal', o_xs_panel: 'Panel',
+  o_xs_slim: 'Slim', o_xs_normal: 'Normal',
   e_show_when: 'When to Show', e_spool_style: 'Appearance',
   e_custom_humidity: 'Custom Humidity Sensor', e_custom_temperature: 'Custom Temperature Sensor',
   e_external_style: 'External Spool Style', h_show_external: 'Only while in use = otherwise the card is hidden',
+  o_rings: 'Rings', e_size: 'Size', o_sz_compact: 'Compact', o_sz_normal: 'Normal',
 });
 
 const BBF_AMS_MODELS = ['AMS', 'AMS Lite', 'AMS 2 Pro', 'AMS HT', 'AMS 3H'];
@@ -953,13 +960,7 @@ const BBF_STYLE = `
           background: rgba(128,128,128,.12); border: 1px solid rgba(128,128,128,.28); color: var(--secondary-text-color); cursor: pointer; line-height: 1.5; }
   .chip svg { flex-shrink: 0; }
   ha-card { container-type: inline-size; }
-  .groups { display: flex; flex-wrap: wrap; gap: 8px; }
-  .layout { display: flex; gap: 8px; align-items: flex-start; }
-  .amscol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .extcol { display: flex; min-width: 0; }
-  .extcol .grp { flex: 1 1 auto !important; }
   .vlayout { display: flex; flex-direction: column; gap: 8px; }
-  .vlayout .amscol { flex: none !important; }
   .extbar { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
   /* slim: one line – small spool, label + name, type, remaining */
   .xb { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto;
@@ -986,40 +987,13 @@ const BBF_STYLE = `
   .xbar { width: 44px; height: 4px; border-radius: 2px; background: rgba(128,128,128,.3); overflow: hidden; }
   .xbar i { display: block; height: 100%; background: var(--fil); }
   .xt { color: var(--secondary-text-color); font-size: 11px; white-space: nowrap; }
-  /* external spool: panel */
-  .xpanel { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 12px;
-            background: rgba(128,128,128,.07); border: 1px solid rgba(128,128,128,.18); transition: border-color .25s, box-shadow .25s; }
-  .xpanel.active { border-color: var(--bbf-active); box-shadow: 0 0 8px color-mix(in srgb, var(--bbf-active) 45%, transparent); }
-  .xpspool { flex: none; }
-  .xpspool .slot { max-width: none; cursor: inherit; }
-  .xpinfo { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-  .xpl { font-size: 12px; color: var(--secondary-text-color); }
-  .xpn { font-size: 16px; font-weight: 500; color: var(--primary-text-color); line-height: 1.25;
-         overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .xpanel.empty .xpn { color: var(--secondary-text-color); font-weight: 400; }
-  .xpmeta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
-  .xprem { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--primary-text-color); }
-  .xbar.wide { flex: 1; width: auto; max-width: 180px; height: 5px; }
-  /* after the "all: unset" above: the panel and the lying spool fill the card width */
-  .xpanel { width: 100%; }
-  .xpanel + .xpanel { margin-top: 6px; }
 
-  .row { display: flex; gap: 8px; min-width: 0; align-items: flex-start; }
-  .fill { min-width: 0; }
   .grp { min-width: 0; box-sizing: border-box; background: rgba(128,128,128,.07); border: 1px solid rgba(128,128,128,.18); border-radius: 12px; padding: 8px; }
   .ghead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 6px; margin: 0 2px 8px; min-height: 22px; }
   .glabel { flex: 0 1 auto; max-width: 100%; font-size: 12px; font-weight: 500; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ghead .chips { margin-left: auto; }
-  .ghead .chip, .gfoot .chip { font-size: 11px; padding: 1px 7px; }
-  .gfoot { margin-top: 8px; }
-  .htb { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: center; }
-  .htc .chips { flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px; }
-  .htc .chip { font-size: 11px; padding: 1px 7px; }
+  .ghead .chip { font-size: 11px; padding: 1px 7px; }
   .chip.drying { color: #E8913A; border-color: color-mix(in srgb, #E8913A 55%, transparent); background: color-mix(in srgb, #E8913A 12%, transparent); }
-  .drybox { margin-top: 8px; padding: 8px; border-radius: 10px; border: 1px dashed rgba(128,128,128,.35); }
-  .drybox .ghead { margin-bottom: 6px; }
-  .gfoot .chips { justify-content: center; gap: 4px; }
-  .gfoot .chip { font-size: 10px; padding: 0 5px; gap: 2px; }
   .slots { display: grid; gap: 8px; align-items: stretch; }
   .slot { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; min-width: 0; cursor: pointer;
           -webkit-tap-highlight-color: transparent; border-radius: 10px;
@@ -1041,13 +1015,6 @@ const BBF_STYLE = `
   .val { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; font-size: 12px; font-weight: 500; color: #fff;
          background: rgba(0,0,0,.5); padding: 2px 6px; border-radius: 6px; white-space: nowrap; backdrop-filter: blur(3px); }
   .slot.empty .val, .slot.off .val { background: none; color: #9a9a9a; }
-  /* compact */
-  .dotwrap { display: flex; justify-content: center; padding-top: 2px; }
-  .dot { position: relative; width: 38px; height: 38px; border-radius: 50%; background: var(--fil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 0 0 2px rgba(128,128,128,.35);
-         display: flex; align-items: center; justify-content: center; transition: box-shadow .25s; }
-  .dot::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--card-background-color, #1c1c1c); box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
-  .slot.empty .dot, .slot.off .dot { background: transparent; box-shadow: inset 0 0 0 2px rgba(128,128,128,.45); }
-  .cval { min-height: 14px; text-align: center; font-size: 11px; font-weight: 500; color: var(--primary-text-color); margin-top: -2px; }
   /* label under the spool */
   .lbl { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: center; padding: 5px 4px; border-radius: 8px;
          background: rgba(128,128,128,.14); border: 1px solid transparent; transition: border-color .25s; min-height: 32px; box-sizing: border-box; }
@@ -1056,19 +1023,98 @@ const BBF_STYLE = `
   .slot.empty .nm, .slot.off .nm { color: var(--secondary-text-color); }
   /* active spool */
   .slot.active .spool { border-color: var(--bbf-active); box-shadow: 0 0 10px color-mix(in srgb, var(--bbf-active) 55%, transparent); }
-  .slot.active .dot { box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 0 0 3px var(--bbf-active), 0 0 10px var(--bbf-active); }
   .slot.active .lbl { border-color: color-mix(in srgb, var(--bbf-active) 70%, transparent); }
+
+  /* drying: orange frame (AMS 2 Pro / HT, the AMS 3H dry box) */
+  .grp.drying, .ndry.on { border: 1px solid color-mix(in srgb, #E8913A 60%, transparent); background: color-mix(in srgb, #E8913A 5%, transparent); }
+  /* ---- AMS grid: one equal column per AMS, four spools in a row ---- */
+  .nwrap { display: grid; gap: 8px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(var(--minb, 400px), 100%), 1fr)); }
+  .nb { min-width: 0; display: flex; flex-direction: column; }
+  .ng { display: grid; gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ndry { margin-top: 8px; padding: 8px; border-radius: 10px; border: 1px dashed rgba(128,128,128,.35); }
+  .ndry .ghead { margin-bottom: 6px; }
+  /* rings (and the bare drawn spool of a one-spool unit) */
+  .ni { all: unset; box-sizing: border-box; cursor: pointer; min-width: 0; -webkit-tap-highlight-color: transparent; border-radius: 10px; --n-rem: #d6d6d6;
+        display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; }
+  .ni:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 1px; }
+  .ni.low { --n-rem: #F0A050; }
+  .ni.off { opacity: .45; }
+  .rr { width: 56px; height: 56px; border-radius: 50%; padding: 3px; box-sizing: border-box; flex: none; transition: box-shadow .25s; }
+  .rf { width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--card-background-color, #1c1c1c); box-sizing: border-box; background: var(--fil);
+        display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .rh { width: 19px; height: 19px; border-radius: 50%; background: var(--card-background-color, #1c1c1c); font-size: 11px; font-weight: 600; color: var(--primary-text-color);
+        display: flex; align-items: center; justify-content: center; }
+  .rh:empty { width: 13px; height: 13px; }
+  .ni.empty .rf { background: transparent; border: 2px dashed rgba(128,128,128,.5); box-shadow: none; }
+  .ni.active .rr, .n-spool.active .spool { box-shadow: 0 0 0 2px var(--bbf-active), 0 0 10px color-mix(in srgb, var(--bbf-active) 70%, transparent); }
+  .n-spool .spool { width: 100%; }
+  .n-spool.active .spool { border-color: var(--bbf-active); }
+  .n-spool.empty .wind, .n-spool.off .wind { display: none; }
+  .rt { font-size: 10px; color: var(--secondary-text-color); letter-spacing: .3px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .rn { font-size: 11px; line-height: 1.25; color: var(--primary-text-color); text-align: center; max-width: 100%; overflow: hidden;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; }
+  .ni.empty .rn { color: var(--secondary-text-color); }
+  .ni.active .rt { color: var(--bbf-active); }
+  .dt { flex: none; font-size: 10px; line-height: 1.5; padding: 0 6px; border-radius: 999px; white-space: nowrap; border: 1px solid color-mix(in srgb, var(--bbf-active) 60%, transparent); color: var(--bbf-active); }
+  /* one-spool unit (AMS HT, external spool): the spool and its info side by side; a drawn spool is as wide as one in a 4-tray AMS */
+  .nhtb { flex: 1; display: flex; align-items: center; gap: 12px; }
+  .nhtb > .ni { flex: none; padding: 0; }
+  .htpic { flex: 0 0 calc((100% - 24px) / 4); min-width: 0; display: grid; }
+  .htpic .ni { width: 100%; padding: 0; }
+  .nhtt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .hrow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .hn { min-width: 0; font-size: 13px; font-weight: 500; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hs { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; }
+  .nhtt .chips { justify-content: flex-start; margin-top: 3px; }
+  .nhtt .chip, .nb .ghead .chip { font-size: 11px; padding: 1px 7px; }
+  /* compact AMS: tiles, four in a row */
+  .cg { display: grid; gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cg.one { grid-template-columns: minmax(0, 1fr); }
+  .ct { all: unset; box-sizing: border-box; cursor: pointer; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 7px; min-width: 0;
+        padding: 6px 7px 6px 6px; border-radius: 8px; background: rgba(128,128,128,.10); border: 1px solid transparent; --n-rem: #d6d6d6; transition: border-color .25s; }
+  .ct:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 1px; }
+  .ct.active { border-color: color-mix(in srgb, var(--bbf-active) 70%, transparent); box-shadow: 0 0 6px color-mix(in srgb, var(--bbf-active) 35%, transparent); }
+  .ct.low { --n-rem: #F0A050; }
+  .ct.off { opacity: .45; }
+  .ct .xsp { width: 22px; height: 30px; flex: none; }
+  .ct .xring .rr { width: 32px; height: 32px; }
+  .ct .xsp .xf { width: 4px; }
+  .ct.empty .xsp .xw::after { display: none; }
+  .ctx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
+  .ctn { font-size: 11px; color: var(--primary-text-color); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .ct.empty .ctn { color: var(--secondary-text-color); }
+  .cts { font-size: 10px; color: var(--secondary-text-color); letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ct.active .cts { color: var(--bbf-active); }
+  .ct.low .cts { color: #F0A050; }
+  .ct .xring .rh { display: flex; width: 13px; height: 13px; font-size: 8px; }
+  .csingle { padding: 0; cursor: pointer; }
+  .csingle .xsp { width: 34px; height: 40px; }
+  .csingle.active .xsp { box-shadow: 0 0 0 2px var(--bbf-active), 0 0 10px color-mix(in srgb, var(--bbf-active) 70%, transparent); }
+  .csingle .xring .rr { width: 40px; height: 40px; }
+  /* slim line with a ring */
+  .xring { flex: none; display: flex; }
+  .xring .rr { width: 30px; height: 30px; padding: 2px; }
+  .xring .rf { border-width: 1px; }
+  .xring .rh { display: none; }
+  .xb { --n-rem: #d6d6d6; }
   /* phones / narrow columns */
   @container (max-width: 440px) {
-    .groups, .layout, .amscol, .row, .slots, .htb { gap: 5px; }
+    .slots, .ng { gap: 5px; }
     .grp { padding: 6px; border-radius: 10px; }
     .ghead { margin: 0 1px 6px; }
-    .ghead .chip { font-size: 10px; padding: 0 5px; gap: 2px; }
+    .ghead .chip, .nhtt .chip, .nb .ghead .chip { font-size: 10px; padding: 0 5px; gap: 2px; }
     .lbl { padding: 4px 2px; min-height: 28px; }
     .nm { font-size: 10px; }
     .ty { font-size: 9px; }
     .val { font-size: 10px; padding: 1px 4px; }
     .spool { border-radius: 7px; }
+    .rr { width: 48px; height: 48px; }
+    .ct { flex-direction: column; align-items: stretch; gap: 4px; padding: 5px; text-align: center; }
+    .ct .xsp { width: 100%; height: 18px; }
+    .ct .xring { justify-content: center; }
+    .ctn { font-size: 10px; }
+    .cg.one .ct { flex-direction: row; align-items: center; text-align: left; gap: 7px; padding: 6px 7px 6px 6px; }
+    .cg.one .ct .xsp { width: 22px; height: 30px; }
   }
 `;
 
@@ -1088,7 +1134,7 @@ class BambuLabFilamentBase extends HTMLElement {
       root.innerHTML = `<style>${BBF_STYLE}</style><ha-card><div id="body"></div></ha-card>`;
       root.addEventListener('click', (ev) => {
         const el = ev.composedPath().find((n) => n.dataset && n.dataset.e);
-        if (el && !bbfIsMockEntity(el.dataset.e)) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: el.dataset.e }, bubbles: true, composed: true }));
+        if (el && !bbfIsMockEntity(el.dataset.e)) this._open(el.dataset.e);
       });
       this._body = root.getElementById('body');
     }
@@ -1099,7 +1145,7 @@ class BambuLabFilamentBase extends HTMLElement {
   // ---- shared pieces ----
   _opt(key, def) { const v = this._cfg[key]; return v === undefined ? def : v; }
 
-  // the width decides the layout (how many AMS fit in one row, spool size of the panel)
+  // re-render when the width changes
   connectedCallback() {
     if (!this._ro && window.ResizeObserver) {
       this._ro = new ResizeObserver((en) => {
@@ -1109,35 +1155,9 @@ class BambuLabFilamentBase extends HTMLElement {
     }
     if (this._ro) this._ro.observe(this);
   }
-  disconnectedCallback() { if (this._ro) this._ro.disconnect(); }
 
 
   // ---- external spool in the different styles ----
-  _extInfo(sl, T) {
-    const type = !sl.empty && this._opt('show_type', true) ? sl.type : '';
-    return { name: sl.empty ? T.f_empty : sl.name, sub: [type, sl.remText].filter(Boolean).join(' · '),
-      active: sl.active && this._opt('highlight_active', true) };
-  }
-  _spoolPic(sl, active) {
-    return `<div class="slot${active ? ' active' : ''}${sl.empty ? ' empty' : ''}">`
-      + `<div class="spool"><div class="fl"></div><div class="core"><div class="wind"></div></div><div class="fl b"></div></div></div>`;
-  }
-  // panel: a box as wide as the AMS, spool on the left, details next to it
-  _extPanelHtml(ext, T, slotPx) {
-    return ext.slots.map((sl) => {
-      const active = sl.active && this._opt('highlight_active', true);
-      const name = sl.empty ? T.f_empty : sl.name;
-      const type = sl.type && !sl.empty && this._opt('show_type', true) ? `<span class="xtag">${bbfEsc(sl.type)}</span>` : '';
-      const n = sl.colors.length;
-      const fil = n > 1 ? `linear-gradient(90deg, ${sl.colors.map((c, i) => `${c} ${Math.round((i / n) * 100)}% ${Math.round(((i + 1) / n) * 100)}%`).join(', ')})` : sl.colors[0];
-      const rem = sl.remText ? `<div class="xprem"><span class="xbar wide"><i style="width:${Math.round((sl.level || 0) * 100)}%"></i></span><span>${bbfEsc(sl.remText)}</span></div>` : '';
-      return `<button class="xpanel${active ? ' active' : ''}${sl.empty ? ' empty' : ''}" data-e="${bbfEsc(sl.entity)}" style="--fil:${bbfEsc(fil)}">`
-        + `<div class="xpspool" style="width:${slotPx}px">${this._spoolPic(sl, active)}</div>`
-        + `<div class="xpinfo"><div class="xpl">${bbfEsc(ext.label || T.f_external)}${active ? ` · <span class="xact">${bbfEsc(T.f_active)}</span>` : ''}</div>`
-        + `<div class="xpn">${bbfEsc(name)}</div>${type ? `<div class="xpmeta">${type}</div>` : ''}${rem}</div></button>`;
-    }).join('');
-  }
-
   // external spool as one slim line: color dot, name, type, remaining
   _extBarHtml(ext, T) {
     return `<div class="extbar">${ext.slots.map((sl) => {
@@ -1149,14 +1169,13 @@ class BambuLabFilamentBase extends HTMLElement {
       const n = sl.colors.length;
       const fil = n > 1 ? `linear-gradient(90deg, ${sl.colors.map((c, i) => `${c} ${Math.round((i / n) * 100)}% ${Math.round(((i + 1) / n) * 100)}%`).join(', ')})` : sl.colors[0];
       return `<button class="xb${active ? ' active' : ''}${sl.empty ? ' empty' : ''}" data-e="${bbfEsc(sl.entity)}" style="--fil:${bbfEsc(fil)}">`
-        + `<span class="xsp"><i class="xf"></i><i class="xw"></i><i class="xf"></i></span>`
+        + (bbfStyle(this._cfg.style) === 'rings' ? `<span class="xring">${this._nRing(this._hass, sl)}</span>` : `<span class="xsp"><i class="xf"></i><i class="xw"></i><i class="xf"></i></span>`)
         + `<span class="xtx"><span class="xl">${bbfEsc(ext.label || T.f_external)}${active ? ` · <span class="xact">${bbfEsc(T.f_active)}</span>` : ''}</span>`
         + `<span class="xn">${bbfEsc(name)}</span></span>${type}${rem}</button>`;
     }).join('')}</div>`;
   }
 
   _slotHtml(sl, T) {
-    const style = this._opt('style', 'spool');
     const showName = this._opt('show_name', true);
     const showType = this._opt('show_type', true);
     const active = sl.active && this._opt('highlight_active', true);
@@ -1168,21 +1187,12 @@ class BambuLabFilamentBase extends HTMLElement {
     const vars = `--fil:${bbfEsc(fil)};${sl.level != null ? `--w:${Math.round(30 + sl.level * 56)}%;` : ''}`;
     const name = sl.empty ? T.f_empty : (sl.off ? '—' : sl.name);
     const tip = [sl.name, sl.type, sl.remText, sl.active ? T.f_active : ''].filter(Boolean).join(' · ');
-    let pic;
-    if (style === 'compact') {
-      pic = `<div class="dotwrap"><div class="dot"></div></div>${this._opt('show_remaining', 'auto') !== 'never' ? `<div class="cval">${bbfEsc(sl.remText)}</div>` : ''}`;
-    } else {
-      const val = sl.remText || (sl.empty || sl.off ? '—' : '');
-      pic = `<div class="spool"><div class="fl"></div><div class="core"><div class="wind"></div></div><div class="fl b"></div>${val ? `<span class="val">${bbfEsc(val)}</span>` : ''}</div>`;
-    }
+    const val = sl.remText;
+    const pic = `<div class="spool"><div class="fl"></div><div class="core"><div class="wind"></div></div><div class="fl b"></div>${val ? `<span class="val">${bbfEsc(val)}</span>` : ''}</div>`;
     const lbl = (showName || (showType && sl.type))
       ? `<div class="lbl">${showName ? `<div class="nm">${bbfEsc(name)}</div>` : ''}${showType && sl.type && !sl.empty ? `<div class="ty">${bbfEsc(sl.type)}</div>` : ''}</div>`
       : '';
     return `<button class="${cls}" style="${vars}" data-e="${bbfEsc(sl.entity)}" title="${bbfEsc(tip)}">${pic}${lbl}</button>`;
-  }
-
-  _slotsHtml(slots, T, cols) {
-    return `<div class="slots" style="grid-template-columns:repeat(${cols || Math.max(slots.length, 1)},minmax(0,1fr))">${slots.map((s) => this._slotHtml(s, T)).join('')}</div>`;
   }
 
   // custom: { humidity, temperature } – own sensors (e.g. in a dryer box) instead of the AMS ones
@@ -1255,6 +1265,104 @@ class BambuLabFilamentBase extends HTMLElement {
     }).filter(Boolean);
   }
 
+  // ---- one look for the AMS card and the spool card: drawn spools or rings, names under the spools.
+  // Every AMS is one cell of a grid of equal columns, so a spool has the same size in every AMS of the card.
+  // Older configs: style compact / list / pills -> rings.
+  _nFill(sl) {
+    if (sl.empty || sl.off) return 'transparent';
+    const n = sl.colors.length;
+    return n > 1 ? `linear-gradient(90deg, ${sl.colors.map((c, i) => `${c} ${Math.round((i / n) * 100)}% ${Math.round(((i + 1) / n) * 100)}%`).join(', ')})` : sl.colors[0];
+  }
+  _nNo(hass, sl) {
+    const e = hass.entities && hass.entities[sl.entity];
+    const a = (hass.states[sl.entity] || {}).attributes || {};
+    return e && e.translation_key === 'external_spool' ? '' : a.slot != null ? String(a.slot) : '';
+  }
+  _nActive(sl) { return sl.active && this._opt('highlight_active', true); }
+  _nRing(hass, sl) {
+    const pct = sl.level != null ? Math.round(sl.level * 100) : null;
+    return `<span class="rr" style="background:${pct != null ? `conic-gradient(var(--n-rem) ${pct}%, rgba(128,128,128,.22) 0)` : 'rgba(128,128,128,.22)'}"><span class="rf"><span class="rh">${bbfEsc(this._nNo(hass, sl))}</span></span></span>`;
+  }
+  // one spool; bare = the picture only. A tap opens the filament dialog (see _open)
+  _nItem(hass, sl, T, st, bare) {
+    if (st === 'spool' && !bare) return this._slotHtml(sl, T);
+    const pct = sl.level != null ? Math.round(sl.level * 100) : null;
+    const cls = ['ni', `n-${st}`, this._nActive(sl) ? 'active' : '', sl.empty ? 'empty' : '', sl.off ? 'off' : '', pct != null && pct < 15 ? 'low' : ''].filter(Boolean).join(' ');
+    const name = sl.empty ? T.f_empty : (sl.off ? '—' : sl.name);
+    const type = sl.empty || sl.off ? '' : (this._opt('show_type', true) ? sl.type : '');
+    const tip = [this._nNo(hass, sl), sl.name, sl.type, sl.remText, sl.active ? T.f_active : ''].filter(Boolean).join(' · ');
+    let inner = st === 'rings' ? this._nRing(hass, sl)
+      : `<span class="spool"${pct != null ? ` style="--w:${Math.round(30 + pct * 0.56)}%"` : ''}><span class="fl"></span><span class="core"><span class="wind"></span></span><span class="fl b"></span>${sl.remText ? `<span class="val">${bbfEsc(sl.remText)}</span>` : ''}</span>`;
+    if (!bare) {
+      const sub = [type, sl.remText].filter(Boolean).join(' · ');
+      inner += `${this._opt('show_name', true) ? `<span class="rn">${bbfEsc(name)}</span>` : ''}${sub ? `<span class="rt">${bbfEsc(sub)}</span>` : ''}`;
+    }
+    return `<button class="${cls}" data-e="${bbfEsc(sl.entity)}" title="${bbfEsc(tip)}" style="--fil:${bbfEsc(this._nFill(sl))}">${inner}</button>`;
+  }
+  // compact: a small tile, the picture on the left, name and slot · type · remaining on the right
+  _nPic(hass, sl, st) {
+    return st === 'rings' ? `<span class="xring">${this._nRing(hass, sl)}</span>` : '<span class="xsp"><i class="xf"></i><i class="xw"></i><i class="xf"></i></span>';
+  }
+  _nTile(hass, sl, T, st) {
+    const pct = sl.level != null ? Math.round(sl.level * 100) : null;
+    const cls = ['ct', this._nActive(sl) ? 'active' : '', sl.empty ? 'empty' : '', sl.off ? 'off' : '', pct != null && pct < 15 ? 'low' : ''].filter(Boolean).join(' ');
+    const name = sl.empty ? T.f_empty : (sl.off ? '—' : sl.name);
+    const sub = [sl.empty || sl.off ? '' : (this._opt('show_type', true) ? sl.type : ''), sl.remText].filter(Boolean).join(' · ');
+    const tip = [this._nNo(hass, sl), sl.name, sl.type, sl.remText, sl.active ? T.f_active : ''].filter(Boolean).join(' · ');
+    return `<button class="${cls}" data-e="${bbfEsc(sl.entity)}" title="${bbfEsc(tip)}" style="--fil:${bbfEsc(this._nFill(sl))}">${this._nPic(hass, sl, st)}`
+      + `<span class="ctx">${this._opt('show_name', true) ? `<span class="ctn">${bbfEsc(name)}</span>` : ''}${sub ? `<span class="cts">${bbfEsc(sub)}</span>` : ''}</span></button>`;
+  }
+  _nGrid(hass, slots, T, st, compact) {
+    return compact ? `<div class="cg">${slots.map((sl) => this._nTile(hass, sl, T, st)).join('')}</div>`
+      : `<div class="ng">${slots.map((sl) => this._nItem(hass, sl, T, st)).join('')}</div>`;
+  }
+  // a unit with one spool (AMS HT, the external spool, an AMS tray in the spool card): the spool, everything about it next to it
+  _nSingle(hass, g, T, st, compact, inner) {
+    const sl = g.slots[0];
+    const pic = compact ? `<span class="ni csingle${this._nActive(sl) ? ' active' : ''}" data-e="${bbfEsc(sl.entity)}" style="--fil:${bbfEsc(this._nFill(sl))}">${this._nPic(hass, sl, st)}</span>` : this._nItem(hass, sl, T, st, true);
+    const name = sl.empty ? T.f_empty : (sl.off ? '—' : sl.name);
+    // the type only when shown in the card; a drawn spool has its remaining inside, like in an AMS
+    const sub = [sl.empty || !this._opt('show_type', true) ? '' : sl.type, st === 'spool' && !compact ? '' : sl.remText].filter(Boolean).join(' · ');
+    const tag = this._nActive(sl) && !sl.empty ? `<span class="dt">${bbfEsc(T.f_active)}</span>` : '';
+    const row = `<div class="nhtb">${st === 'spool' && !compact ? `<div class="htpic">${pic}</div>` : pic}<div class="nhtt">`
+      + `${g.name ? `<span class="glabel">${bbfEsc(g.name)}</span>` : ''}<span class="hrow"><span class="hn">${bbfEsc(name)}</span>${tag}</span>`
+      + `${sub ? `<span class="hs">${bbfEsc(sub)}</span>` : ''}</div></div>`;
+    return inner ? row : `<div class="grp nb">${row}</div>`;
+  }
+  _nBlock(hass, g, T, st, compact) {
+    const labels = this._opt('show_labels', true);
+    const drying = /chip drying/.test(g.chips || '');
+    const head = labels || g.chips ? `<div class="ghead"><span class="glabel">${labels ? bbfEsc(g.name) : ''}</span>${g.chips}</div>` : '';
+    if (g.ht) {
+      // AMS HT: the same header as every AMS; one tile (compact) or the spool with its details next to it
+      const body = compact ? `<div class="cg one">${this._nTile(hass, g.slots[0], T, st)}</div>` : this._nSingle(hass, { slots: g.slots }, T, st, false, true);
+      return `<div class="grp nb${drying ? ' drying' : ''}">${head}${body}</div>`;
+    }
+    // AMS 3H: the main zone in rows of four, the dry box in its own frame below
+    const dry = g.dry ? `<div class="ndry${/chip drying/.test(g.dry.chips) ? ' on' : ''}"><div class="ghead"><span class="glabel">${bbfEsc(T.f_drybox)}</span>${g.dry.chips}</div>`
+      + `${this._nGrid(hass, g.dry.slots, T, st, compact)}</div>` : '';
+    return `<div class="grp nb${drying && !g.dry ? ' drying' : ''}">${head}${this._nGrid(hass, g.slots, T, st, compact)}${dry}</div>`;
+  }
+  _nWrap(cells, st, compact) { return cells.length ? `<div class="nwrap" style="--minb:${compact || st === 'rings' ? 360 : 400}px">${cells.join('')}</div>` : ''; }
+
+  // a tap on a spool: the integration's own filament dialog (same as its AMS cards), else more-info
+  async _open(id) {
+    const ent = this._hass && this._hass.entities && this._hass.entities[id];
+    if (ent && ent.platform === 'bambu_lab' && ['tray', 'external_spool'].includes(ent.translation_key) && customElements.get('ams-popup')) {
+      if (this._pop) this._pop.remove();
+      const p = document.createElement('ams-popup');
+      p.style.cssText = 'position:fixed;left:-200vw;top:0;width:1px;height:1px';
+      document.body.appendChild(p);
+      this._pop = p;
+      p.hass = this._hass; p.entity_id = id; p.controlBlocked = true;
+      await p.updateComplete;
+      const inner = p.shadowRoot && p.shadowRoot.querySelector('.popup-action-container');
+      if (inner) { inner.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })); return; }
+    }
+    this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
+  }
+  disconnectedCallback() { if (this._ro) this._ro.disconnect(); if (this._pop) { this._pop.remove(); this._pop = null; } }
+
   static _getStub(hass, test) {
     const d = hass && hass.devices && Object.values(hass.devices).find((x) => test(x));
     return d ? d.id : undefined;
@@ -1264,15 +1372,9 @@ class BambuLabFilamentBase extends HTMLElement {
 // ---------------------------------------------------------------- AMS card
 // ---------------------------------------------------------------- External spool card
 class BambuLabSpoolCard extends BambuLabFilamentBase {
-  getGridOptions() {
-    // a spool drawing is narrow, the other styles are as wide as an AMS card
-    return this._spoolStyle() === 'normal' ? { columns: 3, rows: 'auto', min_columns: 2 } : { columns: 12, rows: 'auto', min_columns: 3 };
-  }
-  _spoolStyle() {
-    const v = this._opt('external_style', 'normal');
-    if (v === 'ribbon') return 'slim';                          // the lying spool look is gone, slim replaces it
-    return ['slim', 'panel'].includes(v) ? v : 'normal';
-  }
+  getGridOptions() { return { columns: 12, rows: 'auto', min_columns: 3 }; }
+  // compact = one line (the old "slim"); normal = the spool with everything about it next to it, in the AMS card's look
+  _spoolSize() { return bbfSpoolSize(this._cfg); }
   _render(hass, T) {
     let cfg = this._cfg;
     if (bblIsMock(cfg.spool)) {
@@ -1295,32 +1397,20 @@ class BambuLabSpoolCard extends BambuLabFilamentBase {
     }).filter(Boolean);
     if (!slots.length) { this._hide(false); return `<div class="warn">${T.f_warn_spool}</div>`; }
     // "only while in use": the card disappears from the dashboard unless the printer prints from this spool
-    const active = slots.filter((s) => s.active);
-    const hide = this._opt('show_external', 'always') === 'active' && !active.length;
-    this._hide(hide);
-    const shown = hide ? slots : (this._opt('show_external', 'always') === 'active' ? active : slots);
+    const active = slots.filter((x) => x.active);
+    const only = this._opt('show_external', 'always') === 'active';
+    this._hide(only && !active.length);
+    const shown = only && active.length ? active : slots;
     // an AMS tray is labelled "AMS · 2" instead of "External"
     let label = T.f_external;
     const ent = hass.entities && hass.entities[shown[0].entity];
     if (ent && ent.translation_key === 'tray') {
-      const dev = hass.devices && hass.devices[ent.device_id];
-      const pName = dev && dev.via_device_id ? bbfDeviceName(hass, dev.via_device_id) : '';
-      let n = bbfDeviceName(hass, ent.device_id);
-      if (pName && n.startsWith(`${pName}_`)) n = n.slice(pName.length + 1);
       const no = hass.states[shown[0].entity] && hass.states[shown[0].entity].attributes.slot;
-      label = `${(n || 'AMS').replace(/_/g, ' ')}${no ? ` · ${no}` : ''}`;
+      label = `${bbfAmsLabel(hass, ent.device_id)}${no ? ` · ${no}` : ''}`;
     }
-    const ext = { n: shown.length, slots: shown, label };
-    const st = this._spoolStyle();
-    if (st === 'normal') return this._header(cfg.title, '') + this._slotsHtml(shown, T);
-    let body;
-    if (st === 'slim') body = this._extBarHtml(ext, T);
-    else {
-      // same spool size as in a full-width AMS card next to it (4 trays)
-      const w = (this._w || this.clientWidth || 400) - 24 - 18 - 3 * 8;
-      body = this._extPanelHtml(ext, T, Math.max(48, Math.min(150, Math.round(w / 4))));
-    }
-    return this._header(cfg.title, '') + body;
+    if (this._spoolSize() === 'compact') return this._header(cfg.title, '') + this._extBarHtml({ n: shown.length, slots: shown, label }, T);
+    const st = bbfStyle(this._cfg.style);
+    return this._header(cfg.title, '') + this._nWrap(shown.map((sl) => this._nSingle(hass, { name: label, chips: '', slots: [sl] }, T, st)), st);
   }
   _hide(h) {
     // in the card editor / dashboard edit mode it stays visible (dimmed), so it can be set up
@@ -1350,8 +1440,7 @@ class BambuLabFilamentCard extends BambuLabFilamentBase {
 
   _extStyle() {
     const v = this._opt('external_style', 'slim');
-    if (v === 'panel') return v;
-    return v === 'normal' || v === 'column' ? 'normal' : 'slim';
+    return ['normal', 'column', 'panel'].includes(v) ? 'normal' : 'slim';
   }
 
   _render(hass, T) {
@@ -1365,7 +1454,6 @@ class BambuLabFilamentCard extends BambuLabFilamentBase {
     const src = bbfSources(hass, c);
     if (!src.ams.length && !src.ext.length) return `<div class="warn">${T.f_warn_filament}</div>`;
     const amsIds = src.ams;
-    const labels = this._opt('show_labels', true);
     const groups = [];
     amsIds.forEach((id) => {
       const slots = this._amsSlots(hass, id, amsIds.length === 1);
@@ -1386,7 +1474,7 @@ class BambuLabFilamentCard extends BambuLabFilamentBase {
         groups.push({ n: 4, cols: 4, name: name.replace(/_/g, ' ') || 'AMS',
           chips: custom3h ? this._chipsHtml(hass, id, custom3h) : this._zoneChipsHtml(hass, main),
           slots: slots.filter((sl) => !dryZone.slots.includes(trayNo(sl))),
-          dry: { slots: slots.filter((sl) => dryZone.slots.includes(trayNo(sl))), chips: this._zoneChipsHtml(hass, dryZone) } });
+          dry: { slots: slots.filter((sl) => dryZone.slots.includes(trayNo(sl))), chips: this._zoneChipsHtml(hass, dryZone), zone: dryZone } });
       } else {
         const chips = this._chipsHtml(hass, id, custom);
         // AMS HT (one spool): the spool with its chips next to it, as wide as two spools – the chips need the room
@@ -1405,65 +1493,25 @@ class BambuLabFilamentCard extends BambuLabFilamentBase {
       if (slots.length) ext = { n: slots.length, name: T.f_external, chips: '', slots };
     }
     if (!groups.length && !ext) return `<div class="warn">${T.f_warn_filament}</div>`;
-
-    // Sizes in px at the smallest comfortable spool; a group of n spools takes n*SLOT + gaps + padding.
-    // The same numbers are used as flex weights, so every spool in the card ends up the same width.
-    const SLOT = 62, GAP = 8, PAD = 18;
-    const gw = (n) => n * SLOT + (n - 1) * GAP + PAD;
-    const width = (this._w || this.clientWidth || 600) - 24;          // minus the card padding
-    // external spool: slim = one line above / below the AMS, normal = a spool in its own column left / right.
-    // Without any AMS it is always a normal spool.
-    const xs = !groups.length ? 'normal' : this._extStyle();
-    const extSide = ext && xs === 'normal';
-    const avail = width - (extSide ? gw(ext.n) + GAP : 0);
-    const end = this._opt('external_position', 'start') === 'end';
-    const seq = groups;
-    // pack the AMS units into rows, then even the rows out (2+2 instead of 3+1)
-    const rows = [];
-    seq.forEach((g) => {
-      const r = rows[rows.length - 1];
-      if (r && r.w + GAP + gw(g.n) <= avail) { r.items.push(g); r.w += GAP + gw(g.n); } else rows.push({ items: [g], w: gw(g.n) });
-    });
-    if (rows.length > 1) {
-      const per = Math.ceil(seq.length / rows.length);
-      rows.length = 0;
-      for (let i = 0; i < seq.length; i += per) {
-        const items = seq.slice(i, i + per);
-        rows.push({ items, w: items.reduce((x, g) => x + gw(g.n), 0) + (items.length - 1) * GAP });
-      }
-    }
-    // the widest row sets the scale, but spools never get bigger than in a full-width 4-spool AMS
-    // (one or two AMS HT alone would otherwise get huge spools)
-    const cap = Math.max(0, ...rows.map((r) => r.w), rows.length ? Math.min(gw(4), avail) : 0);
-
-    const anyHead = labels || groups.some((g) => g.chips);
-    const grp = (g, cls) => {
-      // a one-spool unit (AMS HT) is too narrow for name + chips in one line: its chips go under the spool
-      const narrow = g.n === 1 && g.chips;
-      if (g.ht) {
-        return `<div class="grp ht" style="flex:${gw(g.n)} 1 0">${anyHead ? `<div class="ghead"><span class="glabel">${labels ? bbfEsc(g.name) : ''}</span></div>` : ''}`
-          + `<div class="htb">${this._slotsHtml(g.slots, T, 1)}<div class="htc">${g.chips}</div></div></div>`;
-      }
-      const head = anyHead ? `<div class="ghead"><span class="glabel">${labels ? bbfEsc(g.name) : ''}</span>${narrow ? '' : g.chips}</div>` : '';
-      const foot = narrow ? `<div class="gfoot">${g.chips}</div>` : '';
-      const dry = g.dry ? `<div class="drybox"><div class="ghead"><span class="glabel">${bbfEsc(T.f_drybox)}</span>${g.dry.chips}</div>${this._slotsHtml(g.dry.slots, T, g.cols)}</div>` : '';
-      return `<div class="grp${cls || ''}" style="flex:${gw(g.n)} 1 0">${head}${this._slotsHtml(g.slots, T, g.cols)}${dry}${foot}</div>`;
-    };
-    // a shorter (last) row gets an empty filler, so its spools keep the same size as above
-    const fill = (r) => (cap - r.w > 1 ? `<div class="fill" style="flex:${cap - r.w - GAP} 1 0"></div>` : '');
-    const rowHtml = (r) => `<div class="row">${r.items.map((g) => grp(g)).join('')}${fill(r)}</div>`;
-    const amsCol = rows.length ? `<div class="amscol" style="flex:${cap} 1 0">${rows.map(rowHtml).join('')}</div>` : '';
-    if (ext && ['slim', 'panel'].includes(xs)) {
-      const slotPx = Math.min(150, Math.round((width / Math.max(cap, 1)) * SLOT));
-      const bar = xs === 'panel' ? this._extPanelHtml(ext, T, slotPx) : this._extBarHtml(ext, T);
-      return this._header(c.title, '') + `<div class="vlayout">${end ? amsCol + bar : bar + amsCol}</div>`;
-    }
-    const extCol = extSide ? `<div class="extcol" style="flex:${gw(ext.n)} 1 0">${grp(ext, ' ext')}</div>` : '';
-    const body = !rows.length ? (extSide ? extCol : '')
-      : !extSide ? amsCol
-        : end ? amsCol + extCol : extCol + amsCol;
-    return this._header(c.title, '') + `<div class="layout">${body}</div>`;
+    return this._renderNew(hass, T, c, groups, ext);
   }
+
+  _renderNew(hass, T, c, groups, ext) {
+    const st = bbfStyle(this._cfg.style);
+    const compact = this._cfg.size === 'compact';
+    // external spool (old filament card): slim line above or below, "normal" = one more cell in the grid
+    const xs = ext ? (groups.length ? this._extStyle() : 'normal') : null;
+    const end = this._opt('external_position', 'start') === 'end';
+    const cells = groups.map((g) => this._nBlock(hass, g, T, st, compact));
+    if (xs === 'normal') {
+      const blks = ext.slots.map((sl) => this._nSingle(hass, { name: T.f_external, chips: '', slots: [sl] }, T, st, compact));
+      if (end) cells.push(...blks); else cells.unshift(...blks);
+    }
+    const grid = this._nWrap(cells, st, compact);
+    const bar = xs === 'slim' ? this._extBarHtml(ext, T) : '';
+    return this._header(c.title, '') + `<div class="vlayout">${end ? grid + bar : bar + grid}</div>`;
+  }
+
 
   static getStubConfig(hass) {
     const ent = hass && hass.entities && Object.values(hass.entities).find((x) => x.platform === 'bambu_lab' && x.translation_key === 'print_status');
@@ -1506,18 +1554,20 @@ function bbfSchema(kind, T, ctx) {
   const display = [
     { name: 'show_remaining', required: true, selector: { select: { mode: 'dropdown', options: [
       { value: 'auto', label: T.o_auto }, { value: 'always', label: T.o_always }, { value: 'never', label: T.o_never }] } } },
-    { name: 'style', required: true, selector: { select: { mode: 'list', options: [{ value: 'spool', label: T.o_spool }, { value: 'compact', label: T.o_compact }] } } },
+    { type: 'grid', name: '', flatten: true, schema: [
+      { name: 'style', required: true, selector: { select: { mode: 'list', options: [{ value: 'spool', label: T.o_spool }, { value: 'rings', label: T.o_rings }] } } },
+      { name: 'size', required: true, selector: { select: { mode: 'list', options: [
+        { value: 'normal', label: T.o_sz_normal }, { value: 'compact', label: T.o_sz_compact }] } } }] },
     { type: 'grid', name: '', flatten: true, column_min_width: '220px', schema: [
       { name: 'show_name', selector: { boolean: {} } },
       { name: 'show_type', selector: { boolean: {} } },
       { name: 'highlight_active', selector: { boolean: {} } },
-      ...(kind !== 'spool' ? [{ name: 'show_info', selector: { boolean: {} } }] : []),
-      ...(kind !== 'spool' ? [{ name: 'show_labels', selector: { boolean: {} } }] : []),
+      { name: 'show_labels', selector: { boolean: {} } },
     ] },
     ...(kind === 'filament' && ctx.hasExt ? [{ name: 'show_external', required: true, selector: { select: { mode: 'dropdown', options: [
       { value: 'always', label: T.o_ext_always }, { value: 'active', label: T.o_ext_active }] } } },
       { name: 'external_style', required: true, selector: { select: { mode: 'dropdown', options: [
-        { value: 'slim', label: T.o_xs_slim }, { value: 'panel', label: T.o_xs_panel },
+        { value: 'slim', label: T.o_xs_slim },
         { value: 'normal', label: T.o_xs_normal }] } } },
       { name: 'external_position', required: true, selector: { select: { mode: 'dropdown', options: ctx.extStyle === 'normal'
         ? [{ value: 'start', label: T.o_left }, { value: 'end', label: T.o_right }]
@@ -1556,24 +1606,22 @@ function bbfSchema(kind, T, ctx) {
 
 function bbfSpoolSchema(T, ctx) {
   const amsFilter = BBF_AMS_MODELS.map((model) => ({ integration: 'bambu_lab', model }));
-  const normal = ctx.spoolStyle === 'normal';
   return [
     bblSourceField(T),
     ...(ctx.mock ? [{ name: 'mock', required: true, selector: { select: { mode: 'list', options: [
       { value: 'external', label: T.o_ms_ext }, { value: 'external_active', label: T.o_ms_ext_active }, { value: 'ams_tray', label: T.o_ms_tray }] } } }]
       : [{ name: 'spool', selector: { device: { filter: [{ integration: 'bambu_lab', model: 'External Spool' }, ...amsFilter] } } },
         ...(ctx.isAms ? [{ name: 'tray', selector: { number: { min: 1, max: ctx.trays || 4, step: 1, mode: 'box' } } }] : [])]),
-    { name: 'external_style', required: true, selector: { select: { mode: 'list', options: [
-      { value: 'normal', label: T.o_xs_normal }, { value: 'slim', label: T.o_xs_slim },
-      { value: 'panel', label: T.o_xs_panel }] } } },
+    { type: 'grid', name: '', flatten: true, schema: [
+      { name: 'size', required: true, selector: { select: { mode: 'list', options: [
+        { value: 'normal', label: T.o_sz_normal }, { value: 'compact', label: T.o_sz_compact }] } } },
+      { name: 'style', required: true, selector: { select: { mode: 'list', options: [{ value: 'spool', label: T.o_spool }, { value: 'rings', label: T.o_rings }] } } }] },
     { name: 'show_external', required: true, selector: { select: { mode: 'list', options: [
       { value: 'always', label: T.o_ext_always }, { value: 'active', label: T.o_ext_active }] } } },
     { name: 'title', selector: { text: {} } },
     { name: 'show_remaining', required: true, selector: { select: { mode: 'dropdown', options: [
       { value: 'auto', label: T.o_auto }, { value: 'always', label: T.o_always }, { value: 'never', label: T.o_never }] } } },
-    ...(normal ? [{ name: 'style', required: true, selector: { select: { mode: 'list', options: [{ value: 'spool', label: T.o_spool }, { value: 'compact', label: T.o_compact }] } } }] : []),
     { type: 'grid', name: '', flatten: true, column_min_width: '220px', schema: [
-      ...(normal ? [{ name: 'show_name', selector: { boolean: {} } }] : []),
       { name: 'show_type', selector: { boolean: {} } },
       { name: 'highlight_active', selector: { boolean: {} } },
     ] },
@@ -1583,6 +1631,10 @@ function bbfSpoolSchema(T, ctx) {
 
 const BBF_DEFAULTS = { show_name: true, show_type: true, highlight_active: true, show_info: true, show_external: 'always', show_labels: true,
   show_remaining: 'auto', style: 'spool', external_position: 'start', external_style: 'slim' };
+// style spool | rings (older compact / list / pills are rings)
+const bbfStyle = (v) => (['compact', 'rings', 'list', 'pills'].includes(v) ? 'rings' : 'spool');
+// spool card: size compact = one slim line (older external_style slim / ribbon), normal = the AMS card's look
+const bbfSpoolSize = (c) => (c.size === 'compact' || (!c.size && ['slim', 'ribbon'].includes(c.external_style)) ? 'compact' : 'normal');
 
 class BambuLabFilamentEditor extends HTMLElement {
   setConfig(config) { this._config = config || {}; this._render(); }
@@ -1640,6 +1692,10 @@ class BambuLabFilamentEditor extends HTMLElement {
           if (cfg[k] === '' || cfg[k] === undefined || cfg[k] === null || def === cfg[k]
             || (Array.isArray(cfg[k]) && !cfg[k].length && k !== 'mock')) delete cfg[k];
         });
+        if (cfg.style) cfg.style = bbfStyle(cfg.style);
+        if (cfg.style === 'spool') delete cfg.style;
+        if (cfg.size !== 'compact') delete cfg.size;
+        if (this.kind === 'spool') delete cfg.external_style;
         if (this.kind === 'spool' && cfg.spool && !bbfEntities(this._hass, cfg.spool, 'tray').length) delete cfg.tray;
         if (this.kind === 'filament' && !cfg.external) { delete cfg.show_external; delete cfg.external_position; delete cfg.external_style; }
         if (this.kind === 'filament') delete cfg.external_wrap;
@@ -1666,19 +1722,20 @@ class BambuLabFilamentEditor extends HTMLElement {
       hasExt: !!this._config.external, mock, oneAms: new Set(amsList).size === 1, multiAms: new Set(amsList).size > 1,
       // own humidity / temperature sensor for every AMS in the card (any model)
       liteAms: [...new Set(amsList)].map((id) => ({ id, name: bbfAmsLabel(this._hass, id) })),
-      extStyle: ['normal', 'column'].includes(this._config.external_style) ? 'normal' : 'slim',
-      spoolStyle: this._config.external_style === 'ribbon' ? 'slim' : ['slim', 'panel'].includes(this._config.external_style) ? this._config.external_style : 'normal' };
+      extStyle: ['normal', 'column', 'panel'].includes(this._config.external_style) ? 'normal' : 'slim',
+    };
     this._lite = ctx.liteAms;
-    const sig = `${bblLang(this._hass)}|${kind}|${ctx.liteAms.map((a) => `${a.id}:${a.name}`).join(',')}|${ctx.isAms}|${ctx.trays}|${ctx.hasExt}|${ctx.oneAms}|${ctx.multiAms}|${ctx.extStyle}|${ctx.spoolStyle}|${ctx.mock}`;
+    const sig = `${bblLang(this._hass)}|${kind}|${ctx.liteAms.map((a) => `${a.id}:${a.name}`).join(',')}|${ctx.isAms}|${ctx.trays}|${ctx.hasExt}|${ctx.oneAms}|${ctx.multiAms}|${ctx.extStyle}|${ctx.mock}`;
     if (this._sig !== sig) { this._form.schema = bbfSchema(kind, T, ctx); this._sig = sig; }
     this._form.hass = this._hass;
     const data = { ...BBF_DEFAULTS, ...this._config, _source: mock ? 'mock' : 'device' };
     if (mock && kind === 'spool') data.mock = BBF_MOCK_SPOOL[data.mock] ? data.mock : 'external_active';
     if (mock && kind !== 'spool') data.mock = data.mock == null ? ['ams_3h', 'ams_2_pro'] : [].concat(data.mock);
+    data.style = bbfStyle(this._config.style);
+    data.size = kind === 'spool' ? bbfSpoolSize(this._config) : (this._config.size === 'compact' ? 'compact' : 'normal');
     if (data.show_external === true) data.show_external = 'always';
     if (data.show_external === false) data.show_external = 'never';
-    data.external_style = kind === 'spool' ? ctx.spoolStyle
-      : (this._config.external_style === 'panel' ? 'panel' : ctx.extStyle);
+    if (kind !== 'spool') data.external_style = ctx.extStyle;
     if (!ctx.oneAms) (ctx.liteAms || []).forEach((a, i) => {
       const cs = (this._config.custom_sensors || {})[a.id] || {};
       data[`cs_h_${i}`] = cs.humidity; data[`cs_t_${i}`] = cs.temperature;
